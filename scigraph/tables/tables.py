@@ -11,10 +11,11 @@ correct operation of graphing and analysis tools.
 """
 
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from enum import Enum
-from typing import Optional, List, Any
+from typing import Any, Optional, Dict, List, Tuple
 
 import pandas as pd
 import numpy as np
@@ -177,6 +178,10 @@ class DataTable(ABC):
         slice_from = int(cls.__name__ == "XYTable")
         group_sizes = df.groupby(
             level=0, axis=1, sort=False).size().values[slice_from:]
+        # Allow nested tables to have different sized groups but all groups
+        # must have at least two subcolumns
+        if cls.__name__ == "NestedTable" and not all(group_sizes >= 2):
+            raise ValueError("All groups must be at least two subcolumns")
         if not all(group_sizes == group_sizes[0]):
             raise ValueError("Groups must be the same size")
 
@@ -197,26 +202,28 @@ class XYTable(DataTable):
         and a Y value. This kind of data are often fit with linear or nonlinear
         regression.
 
-        :param data: An array of the data, including X and y. If provided in a
+        Parameters
+        ----------
+        data : array-like
+            An array of the data, including X and y. If provided in a
             DataFrame, the indices are ignored and only the array is used. To
             transform a DataFrame directly into the XYTable, use the method
-            XY.to_frame(df)
-        :type data: array-like
-        :param n_x_columns: The number of columns which represent the X data.
-            X data is always assumed to be aligned left
-        :type n_x_columns: int
-        :param n_y_groups: The number of Y groups in the dataset
-        :type n_y_groups: int
-        :param y_group_size: The number of columns per Y group
-        :type y_group_size: int
-        :param x_name: The name of the X columns, defaults to None
-        :type x_name: Optional[str], optional
-        :param row_names: The names of the rows. If none is provided, rows
-            will be named 0, 1, 2, 3..., defaults to None
-        :type row_names: Optional[Iterable], optional
-        :param group_names: The names of the Y groups. If none is provided,
-            groups will be named A, B, C ... ZX, ZY, ZZ, defaults to None
-        :type group_names: Optional[Iterable], optional
+            XYTable.to_frame(df)
+        n_x_columns : int
+            The number of columns which represent the X data. X data is
+            always assumed to be aligned left
+        n_y_groups : int
+            The number of Y groups in the dataset
+        y_group_size : int
+            The number of columns per Y group
+        x_name : Optional[str], optional
+            The name of the X columns, by default None
+        row_names : Optional[Iterable], optional
+            The names of the rows. If none is provided, rows will be named
+            0, 1, 2, 3..., by default None
+        group_names : Optional[Iterable], optional
+            The names of the Y groups. If none is provided, groups will be
+            named A, B, C ... ZX, ZY, ZZ, by default None
         """
         self.data = data
         self.n_x_columns = n_x_columns
@@ -236,9 +243,9 @@ class XYTable(DataTable):
         super()._check_shape(expected_columns=expected_cols)
 
     def _init_names(self) -> None:
-        """Create the necessary column_names for indexing the DataTable from the
-        specified parameters. If no column_names are provided generate a default
-        of Group A, B, C, ... ZY, ZZ
+        """Create the necessary column_names for indexing the DataTable from
+        the specified parameters. If no column_names are provided generate a
+        default of Group A, B, C, ... ZY, ZZ
         """
         # Generate x_names
         self.x_name = "X" if self.x_name is None else f"X: {self.x_name}"
@@ -267,13 +274,18 @@ class XYTable(DataTable):
 
     @classmethod
     def from_frame(cls, df: DataFrame) -> XYTable:
-        """Construct an XYTable from a pandas DataFrame while preserving the
-        columns and indices.
+        """Construct an XYTable from a pandas DataFrame while preserving
+        the columns and indices. 
 
-        :param df: DataFrame to be converted into an XYTable
-        :type df: DataFrame
-        :return: The XYTable constructed from the DataFrame
-        :rtype: XYTable
+        Parameters
+        ----------
+        df : DataFrame
+            DataFrame to be converted into a XYTable
+
+        Returns
+        -------
+        XYTable
+            The XYTable constructed from a DataFrame    
         """
         cls._validate_nested_frame(df)
         # Construct arguments for instance initialisation
@@ -285,7 +297,8 @@ class XYTable(DataTable):
         row_names = df.index
         x_name, column_names = group_sizes.index[0], list(
             group_sizes.index[1:])
-        return cls(data, n_x_columns, n_y_groups, group_size, x_name, row_names, column_names)
+        return cls(data, n_x_columns, n_y_groups, group_size, x_name,
+                   row_names, column_names)
 
 
 class ColumnTable(DataTable):
@@ -301,15 +314,17 @@ class ColumnTable(DataTable):
         high-dose. Each column defines one group within the same grouping
         variable.
 
-        :param data: The data array. If provided in the format of a DataFrame,
+        Parameters
+        ----------
+        data : array-like
+            The data array. If provided in the format of a DataFrame,
             indexes and columns are ignored and only the array is retained. To
             preserve indices and columns, use ColumnTable.from_frame
-        :type data: array-like
-        :param n_groups: The number of grouping variables in the dataset
-        :type n_groups: int
-        :param group_names: The names of the grouping variables. If none is
-            provided, defaults to A, B, C etc, defaults to None
-        :type group_names: Optional[Iterable], optional
+        n_groups : int
+            The number of grouping variables in the dataset
+        group_names : Optional[Iterable], optional
+            The names of the grouping variables. If none is
+            provided, defaults to A, B, C etc, by default None
         """
         self.data = data
         self.n_groups = n_groups
@@ -339,13 +354,18 @@ class ColumnTable(DataTable):
 
     @classmethod
     def from_frame(cls, df: DataFrame) -> ColumnTable:
-        """Construct a ColumnTable from a pandas DataFrame while preserving the
-        columns and indices.
+        """Construct an ColumnTable from a pandas DataFrame while preserving
+        the columns and indices. 
 
-        :param df: DataFrame to be converted into a ColumnTable
-        :type df: DataFrame
-        :return: The ColumnTable constructed from the DataFrame
-        :rtype: ColumnTable
+        Parameters
+        ----------
+        df : DataFrame
+            DataFrame to be converted into a ColumnTable
+
+        Returns
+        -------
+        ColumnTable
+            The ColumnTable constructed from a DataFrame    
         """
         return cls(df, len(df.columns), df.columns)
 
@@ -365,20 +385,22 @@ class GroupedTable(DataTable):
         grouping variable are defined by rows; the groups (levels) of the other
         grouping variable are defined by columns.
 
-        :param data: The data array. If provided in the format of a DataFrame,
+        Parameters
+        ----------
+        data : array-like
+            The data array. If provided in the format of a DataFrame,
             indexes and columns are ignored and only the array is retained. To
             preserve indices and columns, use GroupedTable.from_frame
-        :type data: array-like
-        :param n_groups: The number of groups in the data set
-        :type n_groups: int
-        :param group_size: The number of data samples per group
-        :type group_size: int
-        :param group_names: The names of the groups. If none is provided, rows
-            will be named A, B, C ... ZX, ZY, ZZ, defaults to None
-        :type group_names: Optional[Iterable], optional
-        :param row_names: The names of the rows,. If none is provided, groups
-            will be named 0, 1, 2, 3 ..., defaults to None
-        :type row_names: Optional[Iterable], optional
+        n_groups : int
+            The number of groups in the data set
+        group_size : int
+            The number of data samples per group
+        group_names : Optional[Iterable], optional
+            The names of the groups. If none is provided, rows
+            will be named A, B, C ... ZX, ZY, ZZ, by default None
+        row_names : Optional[Iterable], optional
+            The names of the rows,. If none is provided, groups
+            will be named 0, 1, 2, 3 ..., by default None
         """
         self.data = data
         self.n_groups = n_groups
@@ -420,12 +442,17 @@ class GroupedTable(DataTable):
     @classmethod
     def from_frame(cls, df: DataFrame) -> GroupedTable:
         """Construct an GroupedTable from a pandas DataFrame while preserving
-        the columns and indices.
+        the columns and indices. 
 
-        :param df: DataFrame to be converted into an GroupedTable
-        :type df: DataFrame
-        :return: The GroupedTable constructed from the DataFrame
-        :rtype: GroupedTable
+        Parameters
+        ----------
+        df : DataFrame
+            DataFrame to be converted into a GroupedTable
+
+        Returns
+        -------
+        GroupedTable
+            The GroupedTable constructed from a DataFrame    
         """
         cls._validate_nested_frame(df)
         group_sizes = df.groupby(level=0, axis=1, sort=False).size()
@@ -446,18 +473,20 @@ class ContingencyTable(DataTable):
         are used to tabulate the actual number of subjects (or observations) 
         that belong to each of the groups defined by the rows and columns
 
-        :param data: The data array. If provided in the format of a DataFrame,
+        Parameters
+        ----------
+        data : array-like
+            The data array. If provided in the format of a DataFrame,
             indexes and columns are ignored and only the array is retained. To
             preserve indices and columns, use ContigencyTable.from_frame
-        :type data: array-like
-        :param n_outcomes: The number of grouping variables in the dataset
-        :type n_outcomes: int
-        :param outcome_names: The names of the grouping variables. If none is
-            provided, defaults to A, B, C etc, defaults to None
-        :type outcome_names: Optional[Iterable], optional
-        :param row_names: The names of the rows,. If none is provided, rows
-            will be named 0, 1, 2, 3 ..., defaults to None
-        :type row_names: Optional[Iterable], optional
+        n_outcomes : int
+            The number of grouping variables in the dataset
+        outcome_names : Optional[Iterable], optional
+            The names of the grouping variables. If none is provided,
+            defaults to A, B, C etc, by default None
+        row_names : Optional[Iterable], optional
+            The names of the rows,. If None is provided, rows
+            will be named 0, 1, 2, 3 ..., by default None
         """
         self.data = data
         self.n_outcomes = n_outcomes
@@ -493,13 +522,18 @@ class ContingencyTable(DataTable):
 
     @classmethod
     def from_frame(cls, df: DataFrame) -> ContingencyTable:
-        """Construct a ContigencyTable from a pandas DataFrame while preserving
-        the columns and indices.
+        """Construct an ContigencyTable from a pandas DataFrame while preserving
+        the columns and indices. 
 
-        :param df: DataFrame to be converted into an ContigencyTable
-        :type df: DataFrame
-        :return: The ContigencyTable constructed from the DataFrame
-        :rtype: ContigencyTable
+        Parameters
+        ----------
+        df : DataFrame
+            DataFrame to be converted into a ContigencyTable
+
+        Returns
+        -------
+        ContigencyTable
+            The ContigencyTable constructed from a DataFrame    
         """
         return cls(df, len(df.columns), df.columns)
 
@@ -520,21 +554,22 @@ class SurvivalTable(DataTable):
         the Y columns are used to enter the outcome (event or censored) for
         different groups of a single grouping variable.
 
-        :param data: The data array. If provided in the format of a DataFrame,
+        Parameters
+        ----------
+        data : array-like
+            The data array. If provided in the format of a DataFrame,
             indexes and columns are ignored and only the array is retained. To
-            preserve indices and columns, use Survival.from_frame
-        :type data: array-like
-        :param n_groups: The number of grouping (Y) variables in the dataset
-        :type n_groups: int
-        :param x_name: The name of the X variable in the dataset,
-            defaults to None
-        :type x_name: Optional[str], optional
-        :param group_names: The names of the grouping (Y) variables, If none is
-            provided, defaults to A, B, C etc, defaults to None
-        :type group_names: Optional[Iterable], optional
-        :param row_names: The names of the rows,  If none is provided, rows
-            will be named 0, 1, 2, 3 ..., defaults to None
-        :type row_names: Optional[Iterable], optional
+            preserve indices and columns, use SurvivalTable.from_frame
+        n_groups : int
+            The number of grouping (Y) variables in the dataset
+        x_name : Optional[str], optional
+            The name of the X variable in the dataset, by default None
+        group_names : Optional[Iterable], optional
+            The names of the grouping (Y) variables, If none is
+            provided, defaults to A, B, C etc, by default None
+        row_names : Optional[Iterable], optional
+            The names of the rows. If none is provided, rows
+            will be named 0, 1, 2, 3 ..., by default None
         """
         self.data = data
         self.n_groups = n_groups
@@ -581,12 +616,17 @@ class SurvivalTable(DataTable):
     @classmethod
     def from_frame(cls, df: DataFrame) -> SurvivalTable:
         """Construct an SurvivalTable from a pandas DataFrame while preserving
-        the columns and indices.
+        the columns and indices. 
 
-        :param df: DataFrame to be converted into an SurvivalTable
-        :type df: DataFrame
-        :return: The SurvivalTable constructed from the DataFrame
-        :rtype: SurvivalTable
+        Parameters
+        ----------
+        df : DataFrame
+            DataFrame to be converted into a SurvivalTable
+
+        Returns
+        -------
+        SurvivalTable
+            The SurvivalTable constructed from a DataFrame    
         """
         n_groups = len(df.columns) - 1
         x_name = df.columns[0]
@@ -608,16 +648,18 @@ class PartsOfWholeTable(DataTable):
         fraction of the total is each value? This table is often used to make
         pie charts
 
-        :param data: The data array. If provided in the format of a DataFrame,
+        Parameters
+        ----------
+        data : array-like
+            The data array. If provided in the format of a DataFrame,
             indexes and columns are ignored and only the array is retained. To
             preserve indices and columns, use PartsOfWholeTable.from_frame
-        :type data: array-like
-        :param n_columns: The number of columns
-        :type n_columns: int
-        :param column_names: The names of the columns, defaults to None
-        :type column_names: Optional[List[str]], optional
-        :param row_names: The names of the rows, defaults to None
-        :type row_names: Optional[List[str]], optional
+        n_columns : int
+            The number of columns
+        column_names : Optional[List[str]], optional
+            The names of the columns, by default None
+        row_names : Optional[List[str]], optional
+            The names of the rows, by default None
         """
         self.data = data
         self.n_columns = n_columns
@@ -632,6 +674,7 @@ class PartsOfWholeTable(DataTable):
         super()._check_shape(expected_columns=self.n_columns)
 
     def _init_names(self) -> None:
+        """Automatically generate column names if none if provided"""
         if self.column_names is None:
             self.column_names = self._auto_name(
                 prefix="", n_names=self.n_columns, alpha=True
@@ -640,12 +683,26 @@ class PartsOfWholeTable(DataTable):
         self._check_names(self.column_names, self.n_columns)
 
     def _set_data(self) -> None:
+        """Set the DataFrame using the generated column and row names"""
         self.data = DataFrame(
             self.data.values, self.row_names, self.column_names
         )
 
     @classmethod
     def from_frame(cls, df: DataFrame) -> PartsOfWholeTable:
+        """Construct an PartsOfWholeTable from a pandas DataFrame while
+        preserving the columns and indices. 
+
+        Parameters
+        ----------
+        df : DataFrame
+            DataFrame to be converted into a PartsOfWholeTable
+
+        Returns
+        -------
+        PartsOfWholeTable
+            The PartsOfWholeTable constructed from a DataFrame    
+        """
         return cls(len(df.columns), df.columns, df.index)
 
 
@@ -666,22 +723,24 @@ class MultipleVariablesTable(DataTable):
         while values for categorical and label variables can be entered as
         text ("Female" and "Male" in the example below).
 
-        :param data: The data array. If provided in the format of a DataFrame,
+        Parameters
+        ----------
+        data : array-like
+            The data array. If provided in the format of a DataFrame,
             indexes and columns are ignored and only the array is retained. To
             preserve indices and columns, use MultipleVariablesTable.from_frame
-        :type data: array-like
-        :param n_variables: The number of variables describing each case
-        :type n_variables: int
-        :param variable_names: The names of the variables describing each case.
+        n_variables : int
+            The number of variables describing each "case"
+        variable_names : Optional[List[str]], optional
+            The names of the variables describing each case.
             If none is provided, defaults to Variable_A, B, C..., 
             defaults to None
-        :type variable_names: Optional[List[str]], optional
-        :param variable_types: The types of the variables: Continuous,
-            Categorical or Label Variables, provided as a List of VariableType
-            enums. If None is provided, variable types will be inferred, with
+        variable_types : Optional[List[VariableType]], optional
+            The types of the variables: Continuous, Categorical or Label
+            Variables, provided as a List of VariableType enums.
+            If None is provided, variable types will be inferred, with
             numerical types being continuous, while non-numerical types being
             categorical, defaults to None
-        :type variable_types: Optional[List[VariableType]], optional
         """
         self.data = data
         self.n_variables = n_variables
@@ -689,6 +748,15 @@ class MultipleVariablesTable(DataTable):
         self.variable_types = variable_types
 
         super().__init__()
+
+    def get_variable_types(self) -> Dict[str, VariableType]:
+        """Return a dictionary of all the variables contained in the DataTable
+        and their VariableTypes
+
+        :return: A dictionary of all variables and variable types
+        :rtype: Dict[str, VariableType]
+        """
+        return dict(zip(self.variable_names, self.variable_types))
 
     def _check_shape(self) -> None:
         """Check the number of variables specified matches the number of
@@ -756,14 +824,109 @@ class MultipleVariablesTable(DataTable):
         """Construct an MultipleVariablesTable from a pandas DataFrame while
         preserving the columns and indices.
 
-        :param df: DataFrame to be converted into an MultipleVariablesTable
-        :type df: DataFrame
-        :return: The MultipleVariablesTable constructed from the DataFrame
-        :rtype: MultipleVariablesTable
+        Parameters
+        ----------
+        df : DataFrame
+            DataFrame to be converted into an MultipleVariablesTable
+        variable_types : Optional[List[VariableType]], optional
+            The type of each variable (column) e.g. Continuous, Categorical or
+            Label, specified as a list of VariableType Enumerations. If none
+            is provided, variable types will be inferred, by default None
+
+        Returns
+        -------
+        MultipleVariablesTable
+            The MultipleVariablesTable constructed from the DataFrame
         """
         return cls(df.values, len(df.columns), df.columns, variable_types)
 
 
 class NestedTable(DataTable):
 
-    pass
+    def __init__(
+        self,
+        data,
+        n_groups: int,
+        group_sizes: List[int],
+        column_names: Optional[List[Tuple[str, str]]] = None
+    ) -> None:
+        """A nested table is used when there are two levels of nested or
+        hierarchical replication.
+
+        Parameters
+        ----------
+        data : array-like
+            The data array. If provided in the format of a DataFrame,
+            indexes and columns are ignored and only the array is retained. To
+            preserve indices and columns, use NestedTable.from_frame
+        n_groups : int
+            The number of highest-level groupings in the dataset
+        group_sizes : List[int]
+            The numbers of sub-groups within each group. Each group must have
+            at least two sub-groups.
+        column_names : Optional[List[Tuple[str, str]]], optional
+            The names of the groups and subgroups, provided as a list of
+            tuples, by default None
+        """
+        self.data = data
+        self.n_groups = n_groups
+        self.group_sizes = group_sizes
+        self.column_names = column_names
+
+        super().__init__()
+
+    def _check_shape(self) -> None:
+        """Check the number of groups matches the number of group sizes
+        and the number of columns matches the group sizes.
+        """
+        if self.n_groups != len(self.group_sizes):
+            raise ValueError(
+                f"{self.n_groups} specified, {len(self.group_sizes)} group_sizes provided."
+            )
+        expected_cols = sum(self.group_sizes)
+        super()._check_shape(expected_columns=expected_cols)
+
+    def _init_names(self) -> None:
+        """Generate the nested column names if none are provided.
+        """
+        if self.column_names is None:
+            group_names = self._auto_name(
+                prefix="Group_", n_names=self.n_groups, alpha=True
+            )
+            self.column_names = []
+            subcol_idx = 0
+            for group, size in zip(group_names, self.group_sizes):
+                self.column_names.extend(
+                    [(group, subcol_idx + n) for n in range(size)])
+                subcol_idx += size
+            return
+        self._check_names(self.column_names, sum(self.group_sizes))
+        if not all(map(lambda name: isinstance(name, tuple) and len(name) == 2, self.column_names)):
+            raise ValueError(
+                "\"column_names\" must be nested to a level of 2."
+            )
+
+    def _set_data(self) -> None:
+        """Generate MultiIndex columns from tuples are set DataFrame
+        """
+        columns = MultiIndex.from_tuples(self.column_names)
+        self.data = DataFrame(self.data.values, columns=columns)
+
+    @classmethod
+    def from_frame(cls, df: DataFrame) -> NestedTable:
+        """Construct an NestedTable from a pandas DataFrame while preserving
+        the columns and indices. 
+
+        Parameters
+        ----------
+        df : DataFrame
+            DataFrame to be converted into a NestedTable
+
+        Returns
+        -------
+        NestedTable
+            The NestedTable constructed from a DataFrame    
+        """
+        super()._validate_nested_frame(df)
+        group_sizes = list(df.groupby(level=0, axis=1, sort=False).size())
+        return cls(df.values, len(group_sizes), group_sizes, df.columns)
