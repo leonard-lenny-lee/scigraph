@@ -1,0 +1,140 @@
+"""Contains the XYTable class
+"""
+
+from __future__ import annotations
+
+from .datatable import *
+
+
+class XYTable(DataTable):
+
+    def __init__(
+        self,
+        data,
+        n_x_replicates: int,
+        n_y_groups: int,
+        n_y_replicates: int,
+        x_name: Optional[str] = None,
+        row_names: Optional[Iterable] = None,
+        group_names: Optional[Iterable] = None
+    ) -> None:
+        """An XY table is a graph where every point is defined by both an X
+        and a Y value. This kind of data are often fit with linear or nonlinear
+        regression.
+
+        Parameters
+        ----------
+        data : array-like
+            An array of the data, including X and y. If provided in a
+            DataFrame, the indices are ignored and only the array is used. To
+            transform a DataFrame directly into the XYTable, use the method
+            XYTable.from_frame
+        n_x_replicates : int
+            The number of columns which represent the X data. X data is
+            always assumed to be aligned left
+        n_y_groups : int
+            The number of Y groups in the dataset
+        n_y_replicates : int
+            The number of replicates (columns) per Y group
+        x_name : Optional[str], optional
+            The name of the X columns, by default None
+        row_names : Optional[Iterable], optional
+            The names of the rows. If none is provided, rows will be named
+            0, 1, 2, 3..., by default None
+        group_names : Optional[Iterable], optional
+            The names of the Y groups. If none is provided, groups will be
+            named A, B, C ... ZX, ZY, ZZ, by default None
+        """
+        self.data = data
+        self.n_x_replicates = n_x_replicates
+        self.n_y_groups = n_y_groups
+        self.n_y_replicates = n_y_replicates
+        self.x_name = x_name
+        self.row_names = row_names
+        self.group_names = group_names
+
+        super().__init__()
+
+    def _check_shape(self) -> None:
+        """Check that there is a column for each replicate of each y group and
+        the replicates for the X group
+        """
+        expected_cols = self.n_y_groups * self.n_y_replicates + self.n_x_replicates
+        super()._check_shape(expected_columns=expected_cols)
+
+    def _init_names(self) -> None:
+        """Create the necessary column_names for indexing the DataTable from
+        the specified parameters. If no column_names are provided generate a
+        default of Group A, B, C, ... ZY, ZZ
+        """
+        # Generate x_names
+        self.x_name = "X" if self.x_name is None else f"X: {self.x_name}"
+        # Generate default column_names if none is provided
+        if self.group_names is None:
+            self. group_names = self._auto_name(
+                prefix="Group_", n_names=self.n_y_groups, alpha=True
+            )
+            return
+        # Validate user input, if provided
+        n_rows, _ = self.data.shape
+        self._check_names(self.group_names, self.n_y_groups)
+        self._check_names(self.row_names, n_rows)
+
+    def _set_data(self) -> None:
+        """Construct the MultiIndices for the DataFrame and set attribute
+        """
+        X_col = [(self.x_name, n) for n in range(1, self.n_x_replicates + 1)]
+        y_col = [(group, n) for group in self.group_names
+                 for n in range(1, self.n_y_replicates + 1)]
+        columns = MultiIndex.from_tuples(X_col + y_col, names=["Group", "n"])
+
+        self.data = DataFrame(
+            self.data.values, index=self.row_names, columns=columns
+        )
+
+    @classmethod
+    def from_frame(cls, df: DataFrame) -> XYTable:
+        """Construct an XYTable from a pandas DataFrame while preserving
+        the columns and indices. 
+
+        Parameters
+        ----------
+        df : DataFrame
+            DataFrame to be converted into a XYTable
+
+        Returns
+        -------
+        XYTable
+            The XYTable constructed from a DataFrame    
+        """
+        cls._validate_nested_frame(df)
+        # Construct arguments for instance initialisation
+        group_sizes = df.groupby(level=0, axis=1, sort=False).size()
+        data = df.values
+        n_x_replicates = group_sizes[0]
+        n_y_groups = len(group_sizes[1:])
+        group_size = group_sizes[1]
+        row_names = df.index
+        x_name, column_names = group_sizes.index[0], list(
+            group_sizes.index[1:])
+        return cls(data, n_x_replicates, n_y_groups, group_size, x_name,
+                   row_names, column_names)
+
+    def plot_xy_graph(
+        self,
+        style: str,
+        plot_error: str,
+    ):
+        x_data = self.data.iloc[:, 0:self.n_x_replicates]
+        y_data = self.data.iloc[:, self.n_x_replicates:]
+        if style in ["mean_only", "mean_and_error"]:
+            self._x = x_data.groupby(axis="columns", level=0).mean()
+            self._y = y_data.groupby(axis="columns", level=0).mean()
+        elif style in ["median_only" | "median_and_error"]:
+            self._x = x_data.groupby(axis="columns", level=0).median()
+            self._y = y_data.groupby(axis="columns", level=0).median()
+        elif style == "each_replicate":
+            self._x = x_data.values
+            self._y = y_data.values
+        else:
+            raise ValueError
