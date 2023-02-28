@@ -2,7 +2,10 @@
 from enum import Enum
 
 
-class Tokenizer(Enum):
+class Token(Enum):
+
+    def __str__(self) -> str:
+        return self.name.lower()
 
     @classmethod
     def from_str(cls, s: str):
