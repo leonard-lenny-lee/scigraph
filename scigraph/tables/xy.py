@@ -1,7 +1,8 @@
 """Contains the XYTable class
 """
-
-from typing import Optional, Iterable
+from __future__ import annotations
+from typing import Optional, Iterable, List
+import warnings
 from .datatable import DataTable, DataFrame, MultiIndex
 
 
@@ -45,14 +46,128 @@ class XYTable(DataTable):
             named A, B, C ... ZX, ZY, ZZ, by default None
         """
         self.data = data
-        self.n_x_replicates = n_x_replicates
-        self.n_y_groups = n_y_groups
-        self.n_y_replicates = n_y_replicates
+        self._n_x_replicates = n_x_replicates
+        self._n_y_groups = n_y_groups
+        self._n_y_replicates = n_y_replicates
         self.x_name = x_name
         self.row_names = row_names
         self.group_names = group_names
 
         super().__init__()
+
+    def reshape(
+        self,
+        n_x_replicates: int,
+        n_y_groups: int,
+        n_y_replicates: int
+    ) -> XYTable:
+        """Reshape the table by changing the specifiers for the number of
+        groups, and the number of X and Y replicates. The number of columns
+        must match the number of columns in the underlying DataFrame.
+
+        Parameters
+        ----------
+        n_x_replicates : int
+            The number of columns which represent the X data. X data is
+            always assumed to be aligned left
+        n_y_groups : int
+            The number of Y groups in the dataset
+        n_y_replicates : int
+            The number of replicates (columns) per Y group
+
+        Returns
+        -------
+        XYTable
+            A reference to the object
+        """
+        # Check that the new specified shape matches shape of data
+        expected_columns = n_y_groups * n_y_replicates + n_x_replicates
+        super()._check_shape(expected_columns=expected_columns)
+        self._n_y_groups = n_y_groups
+        self._n_y_replicates = n_y_replicates
+        self._n_x_replicates = n_x_replicates
+        # Rename groups, if necessary
+        n_names = len(self.group_names)
+        if n_names > self.n_y_groups:
+            # Truncate excess group names
+            excess_groups = ", ".join(self.group_names[self.n_y_groups:])
+            warnings.warn(
+                f"The number of specified Y groups has been reduced."
+                f"Excess group names: '{excess_groups}' have been deleted"
+            )
+            del self.group_names[self.n_y_groups:]
+        elif n_names < self.n_y_groups:
+            # Add additional group names
+            gen_n_names = self.n_y_groups - n_names
+            self.group_names += self._auto_name(
+                prefix="Group_", n_names=gen_n_names, alpha=True,
+                start=65+n_names
+            )
+        assert len(self.group_names) == self.n_y_groups
+        self._set_data()
+        return self
+
+    @property
+    def n_x_replicates(self) -> int:
+        return self._n_x_replicates
+
+    @property
+    def n_y_groups(self) -> int:
+        return self._n_y_groups
+
+    @property
+    def n_y_replicates(self) -> int:
+        return self._n_y_replicates
+
+    @property
+    def row_names(self) -> Iterable:
+        return self._row_names
+
+    @row_names.setter
+    def row_names(self, names: Iterable) -> None:
+        n_rows, _ = self.values.shape
+        self._check_names(names=names, n=n_rows)
+
+    @property
+    def group_names(self) -> Iterable:
+        return self._group_names
+
+    @group_names.setter
+    def group_names(self, names: Iterable) -> None:
+        self._check_names(names=names, n=self.n_y_groups)
+        self._group_names = names
+
+    @property
+    def _grouped(self):
+        return self.data.groupby(axis=1, level=0, sort=False)
+
+    @property
+    def std(self) -> DataFrame:
+        return self._grouped.std(numeric_only=True)
+
+    @property
+    def mean(self) -> DataFrame:
+        return self._grouped.mean()
+
+    @property
+    def median(self) -> DataFrame:
+        return self._grouped.median()
+
+    @property
+    def min(self) -> DataFrame:
+        return self._grouped.min()
+
+    @property
+    def max(self) -> DataFrame:
+        return self._grouped.max()
+
+    @property
+    def count(self) -> DataFrame:
+        return self._grouped.count()
+
+    @property
+    def sem(self) -> DataFrame:
+        return self.std / (self.count ** 0.5)
 
     def _check_shape(self) -> None:
         """Check that there is a column for each replicate of each y group and
@@ -92,7 +207,7 @@ class XYTable(DataTable):
         )
 
     @classmethod
-    def from_frame(cls, df: DataFrame):
+    def from_frame(cls, df: DataFrame) -> XYTable:
         """Construct an XYTable from a pandas DataFrame while preserving
         the columns and indices. 
 

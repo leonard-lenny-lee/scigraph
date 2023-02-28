@@ -78,7 +78,8 @@ class DataTable(ABC):
 
         if expected_rows != n_rows or expected_columns != n_cols:
             raise ValueError(
-                f"Expected {expected_rows} x {expected_columns} array. Found {n_rows} x {n_cols} array."
+                f"Expected {expected_rows} x {expected_columns} array. "
+                f"Found {n_rows} x {n_cols} array."
             )
 
     @abstractmethod
@@ -87,16 +88,23 @@ class DataTable(ABC):
         """
         pass
 
-    def _auto_name(self, prefix: str, n_names: int, alpha: bool) -> List[str]:
+    def _auto_name(
+        self,
+        prefix: str,
+        n_names: int,
+        alpha: bool,
+        start: int = 0
+    ) -> List[str]:
         """Automatically generate a list of names to use based on an
         alphabetical A, B, C ... ZY, ZZ or numerical sequence 1, 2, 3, given
         a prefix
         """
         ASCII_A = 65
-
         result = []
         for n in range(n_names):
+            n += start
             if alpha:
+                n += start
                 seq_0 = chr(ASCII_A + n % 26)
                 seq_1 = '' if n // 26 == 0 else chr(ASCII_A + n // 26 - 1)
                 seq = seq_1 + seq_0
