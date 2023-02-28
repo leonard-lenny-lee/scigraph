@@ -1,1 +1,1 @@
-from .graphing import *
+from .line import LineGraph
