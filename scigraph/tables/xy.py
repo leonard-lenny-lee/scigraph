@@ -1,9 +1,8 @@
 """Contains the XYTable class
 """
 
-from __future__ import annotations
-
-from .datatable import *
+from typing import Optional, Iterable
+from .datatable import DataTable, DataFrame, MultiIndex
 
 
 class XYTable(DataTable):
@@ -93,7 +92,7 @@ class XYTable(DataTable):
         )
 
     @classmethod
-    def from_frame(cls, df: DataFrame) -> XYTable:
+    def from_frame(cls, df: DataFrame):
         """Construct an XYTable from a pandas DataFrame while preserving
         the columns and indices. 
 
@@ -119,22 +118,3 @@ class XYTable(DataTable):
             group_sizes.index[1:])
         return cls(data, n_x_replicates, n_y_groups, group_size, x_name,
                    row_names, column_names)
-
-    def plot_xy_graph(
-        self,
-        style: str,
-        plot_error: str,
-    ):
-        x_data = self.data.iloc[:, 0:self.n_x_replicates]
-        y_data = self.data.iloc[:, self.n_x_replicates:]
-        if style in ["mean_only", "mean_and_error"]:
-            self._x = x_data.groupby(axis="columns", level=0).mean()
-            self._y = y_data.groupby(axis="columns", level=0).mean()
-        elif style in ["median_only" | "median_and_error"]:
-            self._x = x_data.groupby(axis="columns", level=0).median()
-            self._y = y_data.groupby(axis="columns", level=0).median()
-        elif style == "each_replicate":
-            self._x = x_data.values
-            self._y = y_data.values
-        else:
-            raise ValueError

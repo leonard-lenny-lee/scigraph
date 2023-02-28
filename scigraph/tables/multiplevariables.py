@@ -1,11 +1,9 @@
 """Contains the MultipleVariablesTable class
 """
 
-from __future__ import annotations
-
 from enum import Enum
-
-from .datatable import *
+from typing import Optional, List, Dict
+from .datatable import DataTable, DataFrame, to_numeric
 
 
 class VariableType(Enum):
@@ -100,7 +98,7 @@ class MultipleVariablesTable(DataTable):
             variable_types = []
             for column in self.data.columns:
                 try:
-                    self.data[column] = pd.to_numeric(self.data[column])
+                    self.data[column] = to_numeric(self.data[column])
                     variable_types.append(VariableType.Continuous)
                 except ValueError:
                     self.data[column] = self.data[column].astype("category")
@@ -117,7 +115,7 @@ class MultipleVariablesTable(DataTable):
                 raise ValueError("variable_types must be list of VariableType")
 
             if var_type == VariableType.Continuous:
-                self.data[column] = pd.to_numeric(self.data[column])
+                self.data[column] = to_numeric(self.data[column])
             elif var_type == VariableType.Categorical:
                 self.data[column] = self.data[column].astype("category")
             else:
@@ -129,7 +127,7 @@ class MultipleVariablesTable(DataTable):
         cls,
         df: DataFrame,
         variable_types: Optional[List[VariableType]] = None
-    ) -> MultipleVariablesTable:
+    ):
         """Construct an MultipleVariablesTable from a pandas DataFrame while
         preserving the columns and indices.
 

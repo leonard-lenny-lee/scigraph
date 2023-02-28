@@ -1,9 +1,8 @@
 """Contains the GroupedTable class
 """
 
-from __future__ import annotations
-
-from .datatable import *
+from typing import Optional, Iterable
+from .datatable import DataTable, DataFrame, MultiIndex
 
 
 class GroupedTable(DataTable):
@@ -76,7 +75,7 @@ class GroupedTable(DataTable):
         )
 
     @classmethod
-    def from_frame(cls, df: DataFrame) -> GroupedTable:
+    def from_frame(cls, df: DataFrame):
         """Construct an GroupedTable from a pandas DataFrame while preserving
         the columns and indices. 
 

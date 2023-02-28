@@ -1,9 +1,8 @@
 """Contains the SurvivalTable class
 """
 
-from __future__ import annotations
-
-from .datatable import *
+from typing import Optional, Iterable
+from .datatable import DataTable, DataFrame, to_numeric
 
 
 class SurvivalTable(DataTable):
@@ -77,12 +76,12 @@ class SurvivalTable(DataTable):
         """Check that the X column is numeric, while the rest are boolean
         """
         cols = self.data.columns
-        self.data[cols[0]] = pd.to_numeric(self.data[cols[0]])
+        self.data[cols[0]] = to_numeric(self.data[cols[0]])
         for col in cols[1:]:
             self.data[col] = self.data[col].astype("bool")
 
     @classmethod
-    def from_frame(cls, df: DataFrame) -> SurvivalTable:
+    def from_frame(cls, df: DataFrame):
         """Construct an SurvivalTable from a pandas DataFrame while preserving
         the columns and indices. 
 

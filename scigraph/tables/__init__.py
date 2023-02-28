@@ -10,6 +10,7 @@ DataTables will validate the data structure and shape and guarantee the
 correct operation of graphing and analysis tools.
 """
 
+from .datatable import DataTable
 from .xy import XYTable
 from .column import ColumnTable
 from .grouped import GroupedTable

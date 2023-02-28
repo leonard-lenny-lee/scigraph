@@ -1,9 +1,8 @@
 """Contains the NestedTable class
 """
 
-from __future__ import annotations
-
-from .datatable import *
+from typing import Optional, List, Tuple
+from .datatable import DataTable, DataFrame, MultiIndex
 
 
 class NestedTable(DataTable):
@@ -78,7 +77,7 @@ class NestedTable(DataTable):
         self.data = DataFrame(self.data.values, columns=columns)
 
     @classmethod
-    def from_frame(cls, df: DataFrame) -> NestedTable:
+    def from_frame(cls, df: DataFrame):
         """Construct an NestedTable from a pandas DataFrame while preserving
         the columns and indices. 
 

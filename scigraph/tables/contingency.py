@@ -1,9 +1,8 @@
 """Contains the ContigencyTable class
 """
 
-from __future__ import annotations
-
-from .datatable import *
+from typing import Optional, Iterable
+from .datatable import DataTable, DataFrame
 
 
 class ContingencyTable(DataTable):
@@ -68,7 +67,7 @@ class ContingencyTable(DataTable):
         )
 
     @classmethod
-    def from_frame(cls, df: DataFrame) -> ContingencyTable:
+    def from_frame(cls, df: DataFrame):
         """Construct an ContigencyTable from a pandas DataFrame while preserving
         the columns and indices. 
 

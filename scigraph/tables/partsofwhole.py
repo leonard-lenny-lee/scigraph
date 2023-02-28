@@ -1,9 +1,8 @@
 """Contains the PartsOfWholeTable class
 """
 
-from __future__ import annotations
-
-from .datatable import *
+from typing import Optional, List
+from .datatable import DataTable, DataFrame
 
 
 class PartsOfWholeTable(DataTable):
@@ -60,7 +59,7 @@ class PartsOfWholeTable(DataTable):
         )
 
     @classmethod
-    def from_frame(cls, df: DataFrame) -> PartsOfWholeTable:
+    def from_frame(cls, df: DataFrame):
         """Construct an PartsOfWholeTable from a pandas DataFrame while
         preserving the columns and indices. 
 

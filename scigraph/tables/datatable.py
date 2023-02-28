@@ -1,16 +1,10 @@
 """Contains the DataTable abstract base class
 """
 
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from typing import Any, Optional, Dict, List, Tuple
-
-import pandas as pd
-import numpy as np
-
-from pandas import DataFrame, MultiIndex
+from typing import Any, List
+from pandas import DataFrame, MultiIndex, to_numeric
 from numpy import ndarray
 
 
@@ -138,11 +132,11 @@ class DataTable(ABC):
         dtypes into a valid numerical dtype. 
         """
         for col in self.data.columns:
-            self.data[col] = pd.to_numeric(self.data[col])
+            self.data[col] = to_numeric(self.data[col])
 
     @classmethod
     @abstractmethod
-    def from_frame(cls, df: DataFrame) -> DataTable:
+    def from_frame(cls, df: DataFrame):
         """Make a DataTable from a DataFrame. Checks that the DataFrame
         provided matches the expected format for that type of DataTable
         """
@@ -166,8 +160,10 @@ class DataTable(ABC):
         # Check equal sizing of groupings. For XYTables, allow X to be a
         # different size
         slice_from = int(cls.__name__ == "XYTable")
-        group_sizes = df.groupby(
-            level=0, axis=1, sort=False).size().values[slice_from:]
+        group_sizes = df \
+            .groupby(level=0, axis=1, sort=False) \
+            .size() \
+            .values[slice_from:]
         # Allow nested tables to have different sized groups but all groups
         # must have at least two subcolumns
         if cls.__name__ == "NestedTable" and not all(group_sizes >= 2):

@@ -1,9 +1,8 @@
 """Contains the ColumnTable class
 """
 
-from __future__ import annotations
-
-from .datatable import *
+from typing import Optional, Iterable
+from .datatable import DataTable, DataFrame
 
 
 class ColumnTable(DataTable):
@@ -58,7 +57,7 @@ class ColumnTable(DataTable):
         self.data = DataFrame(self.data.values, columns=self.group_names)
 
     @classmethod
-    def from_frame(cls, df: DataFrame) -> ColumnTable:
+    def from_frame(cls, df: DataFrame):
         """Construct an ColumnTable from a pandas DataFrame while preserving
         the columns and indices. 
 
