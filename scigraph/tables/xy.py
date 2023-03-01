@@ -15,6 +15,9 @@ class XYTable(DataTable):
         n_y_groups: int,
         n_y_replicates: int,
         x_name: Optional[str] = None,
+        x_units: Optional[str] = None,
+        y_name: Optional[str] = None,
+        y_units: Optional[str] = None,
         row_names: Optional[Iterable] = None,
         group_names: Optional[Iterable] = None
     ) -> None:
@@ -50,6 +53,9 @@ class XYTable(DataTable):
         self._n_y_groups = n_y_groups
         self._n_y_replicates = n_y_replicates
         self.x_name = x_name
+        self.x_units = x_units
+        self.y_name = y_name
+        self.y_units = y_units
         self.row_names = row_names
         self.group_names = group_names
 
@@ -127,6 +133,7 @@ class XYTable(DataTable):
     def row_names(self, names: Iterable) -> None:
         n_rows, _ = self.values.shape
         self._check_names(names=names, n=n_rows)
+        self._row_names = names
 
     @property
     def group_names(self) -> Iterable:
@@ -136,6 +143,18 @@ class XYTable(DataTable):
     def group_names(self, names: Iterable) -> None:
         self._check_names(names=names, n=self.n_y_groups)
         self._group_names = names
+
+    @property
+    def x_label(self) -> str:
+        if self.x_units is None:
+            return self.x_name
+        return f"{self.x_name} / {self.x_units}"
+
+    @property
+    def y_label(self) -> str:
+        if self.y_units is None:
+            return self.y_name
+        return f"{self.y_name} / {self.y_units}"
 
     @property
     def _grouped(self):
@@ -182,7 +201,8 @@ class XYTable(DataTable):
         default of Group A, B, C, ... ZY, ZZ
         """
         # Generate x_names
-        self.x_name = "X" if self.x_name is None else f"X: {self.x_name}"
+        self.x_name = "X" if self.x_name is None else str(self.x_name)
+        self.y_name = "Y" if self.y_name is None else str(self.y_name)
         # Generate default column_names if none is provided
         if self.group_names is None:
             self. group_names = self._auto_name(

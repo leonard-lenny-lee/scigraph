@@ -12,3 +12,7 @@ class Graph(ABC):
     @abstractmethod
     def plot(self, *args, **kwargs) -> None:
         pass
+
+    @abstractmethod
+    def _plot_axes(self, ax) -> None:
+        pass
