@@ -2,7 +2,7 @@
 import json
 import os
 import toml
-from typing import Any, Dict
+from typing import Any, Dict, Set
 from warnings import warn
 
 CONFIG_FILE = "defConfig.toml"
@@ -14,6 +14,13 @@ class Config:
 
     def __init__(self):
         raise RuntimeError("Call instance()")
+
+    @classmethod
+    def instance(cls):
+        if cls._instance is None:
+            cls._instance = cls.__new__(cls)
+            cls._instance._load_default()
+        return cls._instance
 
     def __getitem__(self, key: str) -> Any:
         keys = key.split(".")
@@ -50,6 +57,10 @@ class Config:
                 RuntimeWarning
             )
 
+    @property
+    def keys(self) -> Set[str]:
+        return self._keys
+
     def _load_default(self) -> None:
         dir = os.path.dirname(__file__)
         filename = os.path.join(dir, CONFIG_FILE)
@@ -71,13 +82,6 @@ class Config:
             else:
                 cfgs[key] = node[k]
         return cfgs
-
-    @classmethod
-    def instance(cls):
-        if cls._instance is None:
-            cls._instance = cls.__new__(cls)
-            cls._instance._load_default()
-        return cls._instance
 
 
 cfg = Config.instance()

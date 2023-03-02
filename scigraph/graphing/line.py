@@ -24,13 +24,14 @@ class LineGraph(Graph):
         err: str = "std",
         ci: float = 0.95,
     ) -> None:
+        super().__init__()
         self.dt = dt
         self.avg = avg
         self.err = err
         self.ci = ci
 
     def plot(self) -> None:
-        fig, ax = plt.subplots(**cfg["figure"])
+        fig, ax = plt.subplots(**self.cfg["figure"])
         self._plot_axes(ax)
         fig.show()
 
@@ -39,11 +40,11 @@ class LineGraph(Graph):
             self._all_none_plot(ax)
         else:
             self._err_plot(ax)
-        if cfg["axes.label_x"]:
+        if self.cfg["axes.label_x"]:
             ax.set_xlabel(self.dt.x_label)
-        if cfg["axes.label_y"]:
+        if self.cfg["axes.label_y"]:
             ax.set_ylabel(self.dt.y_label)
-        self._apply_axes_def_style(ax)
+        self._apply_axes_style(ax)
 
     @property
     def dt(self) -> XYTable:
@@ -152,7 +153,7 @@ class LineGraph(Graph):
         assert len({len(f) for f in plt_data}) == 1
         for group_name, y, *y_err in zip(*plt_data):
             ax.errorbar(x, y, y_err, x_err,
-                        label=group_name, **cfg["errorbar"])
+                        label=group_name, **self.cfg["errorbar"])
 
     def _all_none_plot(self, ax: Axes) -> None:
         """Generate plot with no error bars or individual points plotted"""

@@ -1,6 +1,7 @@
 [figure]
 figsize = [6.0, 4.5]
 dpi = 100
+layout = "tight"
 
 [axes]
 label_x = true
