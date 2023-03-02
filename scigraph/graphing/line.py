@@ -9,10 +9,10 @@ from matplotlib.axes import Axes
 import matplotlib.pyplot as plt
 from numpy import ndarray, tile
 
+from .cfg import cfg
 from .graph import Graph
 from ..tables import XYTable
 from ..utils.args import Token
-from ..utils.constants import *
 
 
 class LineGraph(Graph):
@@ -22,7 +22,7 @@ class LineGraph(Graph):
         dt: XYTable,
         avg: str = "mean",
         err: str = "std",
-        ci: float = CI,
+        ci: float = 0.95,
     ) -> None:
         self.dt = dt
         self.avg = avg
@@ -30,7 +30,7 @@ class LineGraph(Graph):
         self.ci = ci
 
     def plot(self) -> None:
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(**cfg["figure"])
         self._plot_axes(ax)
         fig.show()
 
@@ -39,8 +39,11 @@ class LineGraph(Graph):
             self._all_none_plot(ax)
         else:
             self._err_plot(ax)
-        ax.set_xlabel(self.dt.x_label)
-        ax.set_ylabel(self.dt.y_label)
+        if cfg["axes.label_x"]:
+            ax.set_xlabel(self.dt.x_label)
+        if cfg["axes.label_y"]:
+            ax.set_ylabel(self.dt.y_label)
+        self._apply_axes_def_style(ax)
 
     @property
     def dt(self) -> XYTable:
@@ -148,7 +151,8 @@ class LineGraph(Graph):
         # Assert the correct number of groups has been preserved
         assert len({len(f) for f in plt_data}) == 1
         for group_name, y, *y_err in zip(*plt_data):
-            ax.errorbar(x, y, y_err, x_err, label=group_name)
+            ax.errorbar(x, y, y_err, x_err,
+                        label=group_name, **cfg["errorbar"])
 
     def _all_none_plot(self, ax: Axes) -> None:
         """Generate plot with no error bars or individual points plotted"""

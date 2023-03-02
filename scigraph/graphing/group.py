@@ -6,7 +6,7 @@ from warnings import warn
 import matplotlib.pyplot as plt
 
 from .graph import Graph
-from ..utils.constants import *
+from .cfg import cfg
 
 
 class Group:
@@ -27,7 +27,8 @@ class Group:
 
     def plot(self) -> None:
         n_rows, n_cols = self.dimensions
-        figsize = n_cols * FIG_WIDTH * self.scale, n_rows * FIG_HEIGHT * self.scale
+        width, height = cfg["figure.figsize"]
+        figsize = n_cols * width * self.scale, n_rows * height * self.scale
         fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize)
         [g._plot_axes(ax) for g, ax in zip(self.graphs, axes)]
         exceeds_capacity = self.n_graphs - self.capacity

@@ -1,0 +1,13 @@
+[figure]
+figsize = [6.0, 4.5]
+dpi = 100
+
+[axes]
+label_x = true
+label_y = true
+
+[axes.spines]
+visible = {"top" = false, "right" = false, "bottom" = true, "left" = true}
+
+[errorbar]
+capsize = 3.0
