@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 
-from .. import tables as t
+from matplotlib.axes import Axes
+from . import cfg
 
 
 class Graph(ABC):
@@ -14,5 +15,10 @@ class Graph(ABC):
         pass
 
     @abstractmethod
-    def _plot_axes(self, ax) -> None:
+    def _plot_axes(self, ax: Axes) -> None:
         pass
+
+    def _apply_axes_def_style(self, ax: Axes) -> None:
+        # Format spine visibility
+        for k, v in cfg["axes.spines.visible"].items():
+            ax.spines[k].set_visible(v)
