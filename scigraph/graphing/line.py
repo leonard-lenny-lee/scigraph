@@ -29,21 +29,18 @@ class LineGraph(Graph):
         self.avg = avg
         self.err = err
         self.ci = ci
+        self.x_label = self.dt.x_label
+        self.y_label = self.dt.y_label
 
     def plot(self) -> None:
-        fig, ax = plt.subplots(**self.cfg["figure"])
-        self._plot_axes(ax)
-        fig.show()
+        self._fig, self._axes = plt.subplots(**self.cfg["figure"])
+        self._plot_axes(self._axes)
 
     def _plot_axes(self, ax: Axes) -> None:
         if self.err is _Err.ALL or self.err is _Err.NONE:
             self._all_none_plot(ax)
         else:
             self._err_plot(ax)
-        if self.cfg["axes.label_x"]:
-            ax.set_xlabel(self.dt.x_label)
-        if self.cfg["axes.label_y"]:
-            ax.set_ylabel(self.dt.y_label)
         self._apply_axes_style(ax)
 
     @property

@@ -1,5 +1,6 @@
 
 from __future__ import annotations
+from copy import deepcopy
 from typing import List
 from warnings import warn
 
@@ -26,13 +27,14 @@ class Group:
         self.scale = scale
 
     def plot(self) -> None:
+        # TODO Make the default config object immutable
         n_rows, n_cols = self.dimensions
-        fig_kw = cfg["figure"]
+        fig_kw = deepcopy(cfg["figure"])
         width, height = fig_kw["figsize"]
         fig_kw["figsize"] = n_cols * width * self.scale, \
             n_rows * height * self.scale
-        fig, axes = plt.subplots(n_rows, n_cols, **fig_kw)
-        [g._plot_axes(ax) for g, ax in zip(self.graphs, axes)]
+        self._fig, self._axes = plt.subplots(n_rows, n_cols, **fig_kw)
+        [g._plot_axes(ax) for g, ax in zip(self.graphs, self._axes)]
         exceeds_capacity = self.n_graphs - self.capacity
         if exceeds_capacity > 0:
             warn(
@@ -41,7 +43,7 @@ class Group:
                 f"omitted. Expand dimensions to include all graphs",
                 RuntimeWarning
             )
-        fig.show()
+        self._fig.show()
 
     def add_graph(self, graph: Graph) -> Group:
         self.graphs.append(graph)
