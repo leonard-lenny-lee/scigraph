@@ -1,6 +1,5 @@
 
 from __future__ import annotations
-from copy import deepcopy
 from typing import List
 from warnings import warn
 
@@ -27,9 +26,8 @@ class Group:
         self.scale = scale
 
     def plot(self) -> None:
-        # TODO Make the default config object immutable
         n_rows, n_cols = self.dimensions
-        fig_kw = deepcopy(cfg["figure"])
+        fig_kw = dict(cfg["figure"])
         width, height = fig_kw["figsize"]
         fig_kw["figsize"] = n_cols * width * self.scale, \
             n_rows * height * self.scale

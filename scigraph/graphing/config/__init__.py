@@ -2,8 +2,11 @@
 import json
 import os
 import toml
+from types import MappingProxyType
 from typing import Any, Dict, Set
 from warnings import warn
+
+import seaborn as sns
 
 CONFIG_FILE = "defConfig.toml"
 
@@ -27,6 +30,8 @@ class Config:
         node = self._config
         for k in keys:
             node = node[k]
+        if isinstance(node, dict):
+            return MappingProxyType(node)
         return node
 
     def __setitem__(self, key: str, val: Any) -> None:
@@ -85,3 +90,6 @@ class Config:
 
 
 cfg = Config.instance()
+# Set default styling scheme
+sns.set(style="ticks", palette="Set2")
+sns.despine()

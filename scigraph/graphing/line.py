@@ -9,7 +9,6 @@ from matplotlib.axes import Axes
 import matplotlib.pyplot as plt
 from numpy import ndarray, tile
 
-from . import cfg
 from .graph import Graph
 from ..tables import XYTable
 from ..utils.args import Token

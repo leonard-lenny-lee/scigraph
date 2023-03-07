@@ -7,9 +7,6 @@ layout = "tight"
 label_x = true
 label_y = true
 
-[axes.spines]
-visible = {"top" = false, "right" = false, "bottom" = true, "left" = true}
-
 [errorbar]
 capsize = 3.0
 fmt = "none"
