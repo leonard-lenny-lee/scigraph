@@ -6,6 +6,8 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from . import cfg
 
+__all__ = ["Graph"]
+
 
 class Graph(ABC):
 

@@ -89,7 +89,8 @@ class Config:
         return cfgs
 
 
-cfg = Config.instance()
-# Set default styling scheme
+# Set default styling scheme with seaborn styling engine
 sns.set(style="ticks", palette="Set2")
 sns.despine()
+# Init config singleton instance
+cfg = Config.instance()

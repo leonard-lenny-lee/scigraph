@@ -1,9 +1,11 @@
 """Contains the XYTable class
 """
 from __future__ import annotations
-from typing import Optional, Iterable, List
+from typing import Optional, Iterable
 import warnings
-from .datatable import DataTable, DataFrame, MultiIndex
+from ._datatable import DataTable, DataFrame, MultiIndex
+
+__all__ = ["XYTable"]
 
 
 class XYTable(DataTable):

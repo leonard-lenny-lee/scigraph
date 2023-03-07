@@ -7,6 +7,8 @@ from typing import Any, List
 from pandas import DataFrame, MultiIndex, to_numeric
 from numpy import ndarray
 
+__all__ = ["DataTable"]
+
 
 class DataTable(ABC):
 

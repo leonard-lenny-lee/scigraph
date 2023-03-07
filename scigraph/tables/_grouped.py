@@ -2,7 +2,9 @@
 """
 
 from typing import Optional, Iterable
-from .datatable import DataTable, DataFrame, MultiIndex
+from ._datatable import DataTable, DataFrame, MultiIndex
+
+__all__ = ["GroupedTable"]
 
 
 class GroupedTable(DataTable):

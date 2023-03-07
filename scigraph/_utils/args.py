@@ -2,7 +2,7 @@
 from enum import Enum
 
 
-class Token(Enum):
+class Arg(Enum):
 
     def __str__(self) -> str:
         return self.name.lower()

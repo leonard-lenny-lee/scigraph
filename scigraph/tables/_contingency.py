@@ -2,7 +2,9 @@
 """
 
 from typing import Optional, Iterable
-from .datatable import DataTable, DataFrame
+from ._datatable import DataTable, DataFrame
+
+__all__ = ["ContigencyTable"]
 
 
 class ContingencyTable(DataTable):

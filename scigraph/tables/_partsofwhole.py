@@ -2,7 +2,9 @@
 """
 
 from typing import Optional, List
-from .datatable import DataTable, DataFrame
+from ._datatable import DataTable, DataFrame
+
+__all__ = ["PartsOfWholeTable"]
 
 
 class PartsOfWholeTable(DataTable):

@@ -1,1 +1,1 @@
-from .dosereponse import *
+from ._doseresponse import *

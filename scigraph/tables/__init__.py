@@ -10,12 +10,12 @@ DataTables will validate the data structure and shape and guarantee the
 correct operation of graphing and analysis tools.
 """
 
-from .datatable import DataTable
-from .xy import XYTable
-from .column import ColumnTable
-from .grouped import GroupedTable
-from .contingency import ContingencyTable
-from .survival import SurvivalTable
-from .partsofwhole import PartsOfWholeTable
-from .multiplevariables import MultipleVariablesTable, VariableType
-from .nested import NestedTable
+from ._datatable import *
+from ._xy import *
+from ._column import *
+from ._grouped import *
+from ._contingency import *
+from ._survival import *
+from ._partsofwhole import *
+from ._multiplevariables import *
+from ._nested import *

@@ -2,7 +2,9 @@
 """
 
 from typing import Optional, List, Tuple
-from .datatable import DataTable, DataFrame, MultiIndex
+from ._datatable import DataTable, DataFrame, MultiIndex
+
+__all__ = ["NestedTable"]
 
 
 class NestedTable(DataTable):

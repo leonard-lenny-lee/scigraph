@@ -9,9 +9,11 @@ from matplotlib.axes import Axes
 import matplotlib.pyplot as plt
 from numpy import ndarray, tile
 
-from .graph import Graph
+from ._graph import Graph
 from ..tables import XYTable
-from ..utils.args import Token
+from .._utils.args import Arg
+
+__all__ = ["LineGraph"]
 
 
 class LineGraph(Graph):
@@ -167,13 +169,13 @@ class LineGraph(Graph):
             ax.scatter(x=tile(x, n), y=y_all[i*n:i*n+n].ravel())
 
 
-class _Avg(Token):
+class _Avg(Arg):
 
     MEAN = 0
     MEDIAN = 1
 
 
-class _Err(Token):
+class _Err(Arg):
 
     STD = 0
     SEM = 1

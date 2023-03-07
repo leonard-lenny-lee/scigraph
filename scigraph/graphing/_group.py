@@ -5,8 +5,10 @@ from warnings import warn
 
 import matplotlib.pyplot as plt
 
-from .graph import Graph
+from ._graph import Graph
 from . import cfg
+
+__all__ = ["Group"]
 
 
 class Group:

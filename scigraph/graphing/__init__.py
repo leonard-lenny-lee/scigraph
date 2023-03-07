@@ -1,3 +1,3 @@
-from .config import cfg
-from .group import Group
-from .line import LineGraph
+from ._config import cfg
+from ._group import *
+from ._line import *

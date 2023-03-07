@@ -7,7 +7,7 @@ import scipy.optimize as opt
 
 from ..tables import XYTable
 from ..graphing import LineGraph
-from ..utils.args import Token
+from .._utils.args import Arg
 
 __all__ = ["LL4", "DoseResponse"]
 
@@ -39,7 +39,7 @@ class LL4(DoseResponseEquation):
         return ["b", "c", "d", "e"]
 
 
-class _Model(Token):
+class _Model(Arg):
 
     LL4 = LL4
 
