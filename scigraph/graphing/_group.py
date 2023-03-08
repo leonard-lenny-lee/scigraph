@@ -1,5 +1,9 @@
-
+"""Group class allows grouping of multiple graphs into a single figure
+"""
 from __future__ import annotations
+
+__all__ = ["Group"]
+
 from typing import List
 from warnings import warn
 
@@ -7,8 +11,6 @@ import matplotlib.pyplot as plt
 
 from ._graph import Graph
 from . import cfg
-
-__all__ = ["Group"]
 
 
 class Group:
@@ -29,7 +31,7 @@ class Group:
 
     def plot(self) -> None:
         n_rows, n_cols = self.dimensions
-        fig_kw = dict(cfg["figure"])
+        fig_kw = dict(cfg.fig_kw)
         width, height = fig_kw["figsize"]
         fig_kw["figsize"] = n_cols * width * self.scale, \
             n_rows * height * self.scale

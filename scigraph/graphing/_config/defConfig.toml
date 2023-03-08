@@ -1,12 +1,10 @@
-[figure]
+[kwargs]
+
+[kwargs.figure]
 figsize = [6.0, 4.5]
 dpi = 100
 layout = "tight"
 
-[axes]
-label_x = true
-label_y = true
-
-[errorbar]
+[kwargs.errorbar]
 capsize = 3.0
 fmt = "none"

@@ -4,7 +4,7 @@
 from typing import Optional, Iterable
 from ._datatable import DataTable, DataFrame
 
-__all__ = ["ContigencyTable"]
+__all__ = ["ContingencyTable"]
 
 
 class ContingencyTable(DataTable):

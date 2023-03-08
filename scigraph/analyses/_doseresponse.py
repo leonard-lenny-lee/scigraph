@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from numpy import log, exp, tile, linspace
+from numpy import log, exp, tile, linspace, min, max, sum
 from pandas import DataFrame
 import scipy.optimize as opt
 
@@ -51,7 +51,6 @@ class DoseResponse:
         self._results = None
 
     def solve(self, model: str | DoseResponseEquation = "ll4"):
-        from numpy import sum
         self.model: DoseResponseEquation = model
         n = self.dt.n_y_replicates
         x = tile(self.dt.mean.values.T[0], n)
@@ -69,10 +68,8 @@ class DoseResponse:
         return self.results
 
     def graph(self, n_points: int = 1000) -> LineGraph:
-        from numpy import min, max
         graph = LineGraph(self.dt)
         graph.plot()
-        # [graph.axes.lines.pop() for _ in range(len(graph.axes.lines))]
         # Find ranges of x values to plot
         x_data = self.dt.data[self.dt.x_name].values
         x_min, x_max = min(x_data), max(x_data)
@@ -85,7 +82,6 @@ class DoseResponse:
             graph.axes.plot(x, y, label=compound)
             # TODO - implement label synchronization across elements
             # TODO - add max, min responses, EC50 with lines
-        graph.show()
         return graph
 
     @property

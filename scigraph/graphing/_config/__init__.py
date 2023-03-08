@@ -7,6 +7,7 @@ from typing import Any, Dict, Set
 from warnings import warn
 
 import seaborn as sns
+import matplotlib.pyplot as plt
 
 CONFIG_FILE = "defConfig.toml"
 
@@ -66,6 +67,14 @@ class Config:
     def keys(self) -> Set[str]:
         return self._keys
 
+    @property
+    def fig_kw(self) -> MappingProxyType:
+        return MappingProxyType(self["kwargs.figure"])
+
+    @property
+    def errbar_kw(self) -> MappingProxyType:
+        return MappingProxyType(self["kwargs.errorbar"])
+
     def _load_default(self) -> None:
         dir = os.path.dirname(__file__)
         filename = os.path.join(dir, CONFIG_FILE)
@@ -90,7 +99,7 @@ class Config:
 
 
 # Set default styling scheme with seaborn styling engine
-sns.set(style="ticks", palette="Set2")
-sns.despine()
+sns.set_theme(style="ticks", palette="Set2")
+plt.rc("axes.spines", top=False, right=False)
 # Init config singleton instance
 cfg = Config.instance()

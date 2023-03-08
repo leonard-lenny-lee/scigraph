@@ -9,6 +9,7 @@ from matplotlib.axes import Axes
 import matplotlib.pyplot as plt
 from numpy import ndarray, tile
 
+from . import cfg
 from ._graph import Graph
 from ..tables import XYTable
 from .._utils.args import Arg
@@ -24,6 +25,7 @@ class LineGraph(Graph):
         avg: str = "mean",
         err: str = "std",
         ci: float = 0.95,
+        **kwargs
     ) -> None:
         super().__init__()
         self.dt = dt
@@ -32,9 +34,11 @@ class LineGraph(Graph):
         self.ci = ci
         self.x_label = self.dt.x_label
         self.y_label = self.dt.y_label
+        self.join_dots = False
+        self._set_kwargs(**kwargs)
 
     def plot(self) -> None:
-        self._fig, self._axes = plt.subplots(**self.cfg["figure"])
+        self._fig, self._axes = plt.subplots(**cfg.fig_kw)
         self._plot_axes(self._axes)
 
     def _plot_axes(self, ax: Axes) -> None:
@@ -150,8 +154,9 @@ class LineGraph(Graph):
         # Assert the correct number of groups has been preserved
         assert len({len(f) for f in plt_data}) == 1
         for group_name, y, *y_err in zip(*plt_data):
-            ax.errorbar(x, y, y_err, x_err,
-                        label=group_name, **self.cfg["errorbar"])
+            if self.join_dots:
+                ax.plot(x, y, label=group_name)
+            ax.errorbar(x, y, y_err, x_err, label=group_name, **cfg.errbar_kw)
 
     def _all_none_plot(self, ax: Axes) -> None:
         """Generate plot with no error bars or individual points plotted"""
@@ -161,7 +166,7 @@ class LineGraph(Graph):
         y_all = self.dt.data.values.T[self.dt.n_x_replicates:]
         for i, (group_name, y) in enumerate(zip(self.dt.group_names, y)):
             # Plot averages at each X as line
-            ax.plot(x, y, label=group_name)
+            ax.plot(x, y, "bo", label=group_name)
             if self.err is _Err.NONE:
                 continue
             # Plot individual data points as scatter if 'all' is specified
