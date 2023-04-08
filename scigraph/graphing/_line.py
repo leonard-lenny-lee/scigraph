@@ -9,15 +9,20 @@ from matplotlib.axes import Axes
 import matplotlib.pyplot as plt
 from numpy import ndarray, tile
 
-from . import cfg
 from ._graph import Graph
 from ..tables import XYTable
 from .._utils.args import Arg
+from .._utils.descriptors import CfgProperty
 
 __all__ = ["LineGraph"]
 
 
 class LineGraph(Graph):
+
+    linestyle = CfgProperty("linestyle", "line.linestyle")
+    marker = CfgProperty("marker", "line.marker")
+    errbar_capsize = CfgProperty("errbar_capsize", "line.errorbar.capsize")
+    errbar_fmt = CfgProperty("errbar_fmt", "line.errorbar.fmt")
 
     def __init__(
         self,
@@ -32,13 +37,13 @@ class LineGraph(Graph):
         self.avg = avg
         self.err = err
         self.ci = ci
-        self.x_label = self.dt.x_label
-        self.y_label = self.dt.y_label
-        self.join_dots = False
+        self.xlabel = self.dt.xlabel
+        self.ylabel = self.dt.ylabel
+        self._group_names = self.dt.groupnames
         self._set_kwargs(**kwargs)
 
     def plot(self) -> None:
-        self._fig, self._axes = plt.subplots(**cfg.fig_kw)
+        self._fig, self._axes = plt.subplots(**self.fig_kw)
         self._plot_axes(self._axes)
 
     def _plot_axes(self, ax: Axes) -> None:
@@ -100,6 +105,13 @@ class LineGraph(Graph):
             return
         raise ValueError("ci must take a value between 0 and 1")
 
+    @property
+    def errbar_kw(self):
+        return {
+            "capsize": self.errbar_capsize,
+            "fmt": self.errbar_fmt,
+        }
+
     def _calc_avg(self) -> ndarray:
         """Calculate XY data points"""
         if self.avg is _Avg.MEAN:
@@ -147,16 +159,16 @@ class LineGraph(Graph):
         points, n_err, p_err = points.T, n_err.T, p_err.T
         assert n_err is not None
         x, *x_err = points[0], n_err[0], p_err[0]
-        y, *y_err = points[1:], n_err[1:], p_err[1:]
         if self.dt.n_x_replicates == 1:
             x_err = None
-        plt_data = (self.dt.group_names, y, *y_err)
+        plt_data = points[1:], n_err[1:], p_err[1:]
         # Assert the correct number of groups has been preserved
         assert len({len(f) for f in plt_data}) == 1
-        for group_name, y, *y_err in zip(*plt_data):
-            if self.join_dots:
-                ax.plot(x, y, label=group_name)
-            ax.errorbar(x, y, y_err, x_err, label=group_name, **cfg.errbar_kw)
+        for color, y, *y_err in zip(self.cglpalette, *plt_data):
+            ax.plot(x, y, marker=self.marker,
+                    linestyle=self.linestyle, color=color)
+            ax.errorbar(x, y, y_err, x_err,
+                        color=color, **self.errbar_kw)
 
     def _all_none_plot(self, ax: Axes) -> None:
         """Generate plot with no error bars or individual points plotted"""
@@ -164,14 +176,16 @@ class LineGraph(Graph):
         points = self._calc_avg().T
         x, y = points[0], points[1:]
         y_all = self.dt.data.values.T[self.dt.n_x_replicates:]
-        for i, (group_name, y) in enumerate(zip(self.dt.group_names, y)):
+        for i, (y, color) in enumerate(zip(y, self.cglpalette)):
             # Plot averages at each X as line
-            ax.plot(x, y, "bo", label=group_name)
             if self.err is _Err.NONE:
+                ax.plot(x, y, marker=self.marker,
+                        linestyle=self.linestyle, color=color)
                 continue
             # Plot individual data points as scatter if 'all' is specified
             n = self.dt.n_y_replicates
-            ax.scatter(x=tile(x, n), y=y_all[i*n:i*n+n].ravel())
+            ax.scatter(
+                x=tile(x, n), y=y_all[i*n:i*n+n].ravel(), color=color)
 
 
 class _Avg(Arg):

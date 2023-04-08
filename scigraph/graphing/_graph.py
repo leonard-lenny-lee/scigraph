@@ -5,24 +5,34 @@ from __future__ import annotations
 __all__ = ["Graph"]
 
 from abc import ABC, abstractmethod
+from enum import Enum
 
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
+import matplotlib.lines as mlines
 
 from ..tables import DataTable
+from .._utils.descriptors import *
 
 
 class Graph(ABC):
+
+    figsize = CfgProperty("figsize", "graph.figure.figsize")
+    dpi = CfgProperty("dpi", "graph.figure.dpi")
+    layout = CfgProperty("layout", "graph.figure.layout")
+    spines = CfgProperty("spines", "graph.spines")
+    cglpalette = SnsPalette("cglpalette", "graph.palettes.categorical")
 
     @abstractmethod
     def __init__(self) -> None:
         # Init attributes shared by all graphs
         self._fig = None
         self._axes = None
-        self.x_label: str = None
-        self.y_label: str = None
-        self.label_x: bool = True
-        self.label_y: bool = True
+        self._group_names = []
+        self.xlabel: str = None
+        self.ylabel: str = None
+        self.show_xlabel: bool = True
+        self.show_ylabel: bool = True
         self.legend: bool = True
 
     @abstractmethod
@@ -56,6 +66,14 @@ class Graph(ABC):
             raise AttributeError("axes not initialized, call plot()")
         return self._axes
 
+    @property
+    def fig_kw(self):
+        return {
+            "figsize": self.figsize,
+            "dpi": self.dpi,
+            "layout": self.layout,
+        }
+
     def _set_kwargs(self, **kwargs) -> None:
         # Allow provided kwargs to override default attributes
         # Call at the end of init sequence
@@ -66,9 +84,17 @@ class Graph(ABC):
 
     def _apply_axes_style(self, ax: Axes) -> None:
         # Add axis labels
-        if self.label_x:
-            ax.set_xlabel(self.x_label)
-        if self.label_y:
-            ax.set_ylabel(self.y_label)
+        if self.show_xlabel:
+            ax.set_xlabel(self.xlabel)
+        if self.show_ylabel:
+            ax.set_ylabel(self.ylabel)
+        # Style spines
+        [ax.spines[k].set_visible(v) for k, v in self.spines.items()]
         if self.legend:
-            ax.legend()
+            # # Generate legend styling
+            handles = []
+            for label, color in zip(self._group_names, self.cglpalette):
+                handles.append(mlines.Line2D(
+                    [], [], color=color, linestyle=self.linestyle,
+                    marker=self.marker, label=label))
+            ax.legend(handles=handles)

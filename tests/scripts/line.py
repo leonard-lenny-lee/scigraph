@@ -16,3 +16,8 @@ group = s.graphing.Group(None, 1, 3, 0.75) \
     .add_graph(s.graphing.LineGraph(dt, "mean", "ci")) \
     .add_graph(s.graphing.LineGraph(dt, "mean", "all"))
 group.plot()
+
+dr_analysis = s.analyses.DoseResponse(dt)
+dr_analysis.solve("ll4")
+g = dr_analysis.graph()
+g.show()

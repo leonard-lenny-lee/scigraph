@@ -22,7 +22,7 @@ class SimpleLinearRegression:
         n = self.dt.n_y_replicates
         x = tile(self.dt.mean.values.T[0], n)
         fit_data = []
-        for group in self.dt.group_names:
+        for group in self.dt.groupnames:
             y = self.dt.data[group].values.T.ravel()
             result = linregress(x, y)
             cur_fit = dict(zip(self._p, result))
@@ -31,8 +31,11 @@ class SimpleLinearRegression:
         self._params = DataFrame(fit_data).set_index("group")
         return self.params
 
-    def graph(self, n_points: int = 1000) -> LineGraph:
-        graph = LineGraph(self.dt)
+    def graph(self, n_points: int = 1000, **graph_kw) -> LineGraph:
+        # Set default marker style for LinearRegression
+        if not "marker" in graph_kw:
+            graph_kw["marker"] = "o"
+        graph = LineGraph(self.dt, **graph_kw)
         graph.plot()
         x_data = self.dt.data[self.dt.x_name].values
         x_min, x_max = min(x_data), max(x_data)
@@ -45,10 +48,10 @@ class SimpleLinearRegression:
             graph.axes.plot(x, y, label=group, zorder=-1)
         return graph
 
-    def interpolate_extrapolate(self, x: float | ndarray) -> float | ndarray:
+    def interpolate_extrapolate(self, x: ndarray[float]) -> ndarray[float]:
         return self._eq(array(x), self._m, self._c)
 
-    def inv_interpolate_extrapolate(self, y: float | ndarray) -> float | ndarray:
+    def inv_interpolate_extrapolate(self, y: ndarray[float]) -> ndarray[float]:
         return self._inv(array(y), self._m, self._c)
 
     @property

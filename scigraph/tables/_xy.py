@@ -59,7 +59,7 @@ class XYTable(DataTable):
         self.y_name = y_name
         self.y_units = y_units
         self.row_names = row_names
-        self.group_names = group_names
+        self.groupnames = group_names
 
         super().__init__()
 
@@ -95,23 +95,23 @@ class XYTable(DataTable):
         self._n_y_replicates = n_y_replicates
         self._n_x_replicates = n_x_replicates
         # Rename groups, if necessary
-        n_names = len(self.group_names)
+        n_names = len(self.groupnames)
         if n_names > self.n_y_groups:
             # Truncate excess group names
-            excess_groups = ", ".join(self.group_names[self.n_y_groups:])
+            excess_groups = ", ".join(self.groupnames[self.n_y_groups:])
             warnings.warn(
                 f"The number of specified Y groups has been reduced."
                 f"Excess group names: '{excess_groups}' have been deleted"
             )
-            del self.group_names[self.n_y_groups:]
+            del self.groupnames[self.n_y_groups:]
         elif n_names < self.n_y_groups:
             # Add additional group names
             gen_n_names = self.n_y_groups - n_names
-            self.group_names += self._auto_name(
+            self.groupnames += self._auto_name(
                 prefix="Group_", n_names=gen_n_names, alpha=True,
                 start=65+n_names
             )
-        assert len(self.group_names) == self.n_y_groups
+        assert len(self.groupnames) == self.n_y_groups
         self._set_data()
         return self
 
@@ -138,22 +138,22 @@ class XYTable(DataTable):
         self._row_names = names
 
     @property
-    def group_names(self) -> Iterable:
+    def groupnames(self) -> Iterable:
         return self._group_names
 
-    @group_names.setter
-    def group_names(self, names: Iterable) -> None:
+    @groupnames.setter
+    def groupnames(self, names: Iterable) -> None:
         self._check_names(names=names, n=self.n_y_groups)
         self._group_names = names
 
     @property
-    def x_label(self) -> str:
+    def xlabel(self) -> str:
         if self.x_units is None:
             return self.x_name
         return f"{self.x_name} / {self.x_units}"
 
     @property
-    def y_label(self) -> str:
+    def ylabel(self) -> str:
         if self.y_units is None:
             return self.y_name
         return f"{self.y_name} / {self.y_units}"
@@ -206,21 +206,21 @@ class XYTable(DataTable):
         self.x_name = "X" if self.x_name is None else str(self.x_name)
         self.y_name = "Y" if self.y_name is None else str(self.y_name)
         # Generate default column_names if none is provided
-        if self.group_names is None:
-            self. group_names = self._auto_name(
+        if self.groupnames is None:
+            self. groupnames = self._auto_name(
                 prefix="Group_", n_names=self.n_y_groups, alpha=True
             )
             return
         # Validate user input, if provided
         n_rows, _ = self.data.shape
-        self._check_names(self.group_names, self.n_y_groups)
+        self._check_names(self.groupnames, self.n_y_groups)
         self._check_names(self.row_names, n_rows)
 
     def _set_data(self) -> None:
         """Construct the MultiIndices for the DataFrame and set attribute
         """
         X_col = [(self.x_name, n) for n in range(1, self.n_x_replicates + 1)]
-        y_col = [(group, n) for group in self.group_names
+        y_col = [(group, n) for group in self.groupnames
                  for n in range(1, self.n_y_replicates + 1)]
         columns = MultiIndex.from_tuples(X_col + y_col, names=["Group", "n"])
 

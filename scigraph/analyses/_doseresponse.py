@@ -39,9 +39,20 @@ class LL4(DoseResponseEquation):
         return ["b", "c", "d", "e"]
 
 
+class HillEquation(DoseResponseEquation):
+
+    def f(self, x: float, e_max: float, ec50: float, n: float) -> float:
+        return e_max/(1+(ec50/exp(x))**n)
+
+    @property
+    def coef(self) -> List[str]:
+        return ["e_max", "ec50", "n"]
+
+
 class _Model(Arg):
 
     LL4 = LL4
+    HILL = HillEquation
 
 
 class DoseResponse:
@@ -55,7 +66,7 @@ class DoseResponse:
         n = self.dt.n_y_replicates
         x = tile(self.dt.mean.values.T[0], n)
         fit_data = []
-        for group in self.dt.group_names:
+        for group in self.dt.groupnames:
             y = self.dt.data[group].values.T.ravel()
             fit_coef, _ = opt.curve_fit(self.model.f, x, y)
             residuals = sum((y - self.model.f(x, *fit_coef)) ** 2)
@@ -68,7 +79,7 @@ class DoseResponse:
         return self.results
 
     def graph(self, n_points: int = 1000) -> LineGraph:
-        graph = LineGraph(self.dt)
+        graph = LineGraph(self.dt, marker="o", linestyle="none")
         graph.plot()
         # Find ranges of x values to plot
         x_data = self.dt.data[self.dt.x_name].values

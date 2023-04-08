@@ -9,7 +9,7 @@ from warnings import warn
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-CONFIG_FILE = "defConfig.toml"
+CONFIG_FILE = "defaults.toml"
 
 
 class Config:
@@ -69,11 +69,15 @@ class Config:
 
     @property
     def fig_kw(self) -> MappingProxyType:
-        return MappingProxyType(self["kwargs.figure"])
+        return MappingProxyType(self["graph.figure"])
 
     @property
     def errbar_kw(self) -> MappingProxyType:
-        return MappingProxyType(self["kwargs.errorbar"])
+        return MappingProxyType(self["line.errorbar"])
+
+    @property
+    def palette_categorical(self):
+        return sns.color_palette(self["graph.palettes.categorical"])
 
     def _load_default(self) -> None:
         dir = os.path.dirname(__file__)
@@ -98,8 +102,6 @@ class Config:
         return cfgs
 
 
-# Set default styling scheme with seaborn styling engine
-sns.set_theme(style="ticks", palette="Set2")
-plt.rc("axes.spines", top=False, right=False)
-# Init config singleton instance
-cfg = Config.instance()
+if __name__ != "__main__":
+    # Init config singleton instance
+    cfg = Config.instance()
