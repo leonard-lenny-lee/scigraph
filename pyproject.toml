@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scigraph"
+version = "0.0.1"
+authors = [{ name = "Leonard Lee", email = "leonard.lee1@outlook.com" }]
+description = "Personal graphing utilities library my DPhil project, based on emulating some of the functionality of GraphPad Prism programatically."
+readme = "README.md"
+requires-python = ">=3.12"
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+]
+dependencies = [
+  "numpy >= 1.26",
+  "pandas >= 2.2",
+  "matplotlib >= 3.8.3",
+  "scipy >= 1.12",
+]

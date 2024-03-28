@@ -1,0 +1,11 @@
+# Matplotlib style for presentations, modifier stylesheet for horizontal plots
+
+axes.spines.top: False
+axes.spines.right: False
+axes.spines.bottom: False
+axes.spines.left: True
+
+axes.grid.axis: x
+
+xtick.bottom: False
+xtick.minor.visible: False
