@@ -6,5 +6,5 @@ from ._styles import (
 )
 
 BASE_SS = "default"
-SCATTER_SS = "scatter"
-ERRORBAR_SS = "errorbar"
+
+use(BASE_SS)

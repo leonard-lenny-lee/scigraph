@@ -12,7 +12,6 @@ from scipy.optimize import curve_fit
 from .abc import XYAnalysis, Plottable
 from scigraph.datatables.xy import XYTable
 from scigraph.graphs.xy import XYPointsGraph, ScaleOpt
-import scigraph.styles as ss
 
 
 class CurveFit(Plottable, XYAnalysis):
@@ -23,6 +22,8 @@ class CurveFit(Plottable, XYAnalysis):
     ) -> None:
         super().__init__(table)
         self.plot_params = _PlotParams()
+        self.p0 = None
+        self.bounds = None
 
     def analyze(self) -> pd.DataFrame:
         return self.fit()
@@ -31,7 +32,7 @@ class CurveFit(Plottable, XYAnalysis):
         popts = {}
         pcovs = {}
         df = self.table.as_df()
-        x = np.repeat(df.values[:, 0].flatten(), self.table.n_replicates)
+        x = np.tile(df.values[:, 0].flatten(), self.table.n_replicates)
         for group in self.table.ygroups:
             y = df[group].values.T.flatten()
             assert len(x) == len(y)
@@ -57,20 +58,21 @@ class CurveFit(Plottable, XYAnalysis):
     ) -> None:
         ax.set_prop_cycle(None)  # Reset
         x = self.table.xvalues[:, 0]
-        xlim = x.min(), x.max()
-        match graph.xscale:
+        match graph.xaxis_opts.scale:
             case ScaleOpt.LINEAR:
+                xlim = x.min(), x.max()
                 x = np.linspace(*xlim, self.plot_params.n_points)
-            case ScaleOpt.LOG:
+            case ScaleOpt.LOG10:
+                x = x[np.nonzero(x)]
+                xlim = np.log10(x.min()), np.log10(x.max())
                 x = np.logspace(*xlim, self.plot_params.n_points)
-        with ss.context(ss.BASE_SS, after_reset=True):
-            for group in self.table.ygroups:
-                if self.popt[group] is None:
-                    ax.plot([], [])
-                    continue
-                y = self.predict(x, group)
-                handle = ax.plot(x, y, marker="")
-                graph._handles[group].append(handle)
+        for group in self.table.ygroups:
+            if self.popt[group] is None:
+                ax.plot([], [])
+                continue
+            y = self.predict(x, group)
+            handle, = ax.plot(x, y, marker="")
+            graph._handles[group].append(handle)
 
     @staticmethod
     @abstractmethod

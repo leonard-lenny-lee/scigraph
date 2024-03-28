@@ -16,7 +16,7 @@ def _get_stylesheet_path(ss_name) -> pathlib.Path:
 
 
 def _build_ss_stack(*ss) -> list[str]:
-    ss_stack = []
+    ss_stack = ["default"]
     for s in ss:
         if s in available_ss:
             s = _get_stylesheet_path(s)
