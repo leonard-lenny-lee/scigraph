@@ -1,26 +1,33 @@
+from typing import NamedTuple
+
 from matplotlib.axis import Axis as MPLAxis
 
 from .._formatters import LOG10_TICK_FORMATTERS, LINEAR_TICK_FORMATTERS
 
 
+class _ScaleProperties(NamedTuple):
+    valid_format_opts: str
+    default_format_opt: str
+    tick_fmt_fns: dict
+    mpl_arg: str
+
+
 class Axis:
 
     valid_scale_opts = {"linear", "log10"}
-    valid_format_opts = {
-        "linear": {"decimal", "power10", "antilog"},
-        "log10": {"log10", "power10", "antilog"},
-    }
-    default_format_opt = {
-        "linear": "decimal",
-        "log10": "power10"
-    }
-    tick_fmt_fns = {
-        "linear": LINEAR_TICK_FORMATTERS,
-        "log10": LOG10_TICK_FORMATTERS,
-    }
-    mpl_scale_map = {
-        "linear": "linear",
-        "log10": "log",
+    scale_properties = {
+        "linear": _ScaleProperties(
+            valid_format_opts={"decimal", "power10", "antilog"},
+            default_format_opt="decimal",
+            tick_fmt_fns=LINEAR_TICK_FORMATTERS,
+            mpl_arg="linear",
+        ),
+        "log10": _ScaleProperties(
+            valid_format_opts={"log10", "power10", "antilog"},
+            default_format_opt="power10",
+            tick_fmt_fns=LOG10_TICK_FORMATTERS,
+            mpl_arg="log",
+        )
     }
 
     def __init__(
@@ -29,23 +36,23 @@ class Axis:
         scale: str = "linear",
         format: str = None
     ) -> None:
-        self.title = title
-        self._scale = None
         self._format = None
+        self.title = title
         self.scale = scale
         if format is None:
-            format = self._default_format()
+            format = self._props.default_format_opt
         self.format = format
 
     def format_axis(self, axis: MPLAxis) -> None:
-        axis._set_axes_scale(self._mpl_scale)
-        fmt_fn = self.tick_fmt_fns[self.scale][self.format]
+        axis._set_axes_scale(self._props.mpl_arg)
+        fmt_fn = self._props.tick_fmt_fns[self.format]
         fmt_fn(axis)
 
-    def _default_format(self) -> str:
-        if self.scale not in self.default_format_opt:
+    @property
+    def _props(self) -> _ScaleProperties:
+        if self.scale not in self.scale_properties:
             raise NotImplementedError
-        return self.default_format_opt[self.scale]
+        return self.scale_properties[self.scale]
 
     @property
     def scale(self) -> str:
@@ -53,18 +60,14 @@ class Axis:
 
     @scale.setter
     def scale(self, val: str) -> None:
-        if val in self.valid_scale_opts:
-            self._scale = val
-        else:
+        if val not in self.valid_scale_opts:
             raise ValueError(
                 f"Invalid scale argument. Options: {self.valid_scale_opts}"
             )
-        if self.format not in self.valid_format_opts[val]:
-            self.format = self._default_format()
-
-    @property
-    def _mpl_scale(self) -> str:
-        return self.mpl_scale_map[self.scale]
+        self._scale = val
+        if self.format is None \
+                or self.format not in self._props.valid_format_opts:
+            self.format = self._props.default_format_opt
 
     @property
     def format(self) -> str:
@@ -72,12 +75,9 @@ class Axis:
 
     @format.setter
     def format(self, val: str) -> None:
-        if self.scale not in self.valid_format_opts:
-            raise NotImplementedError
-        valid_format_opts = self.valid_format_opts[self.scale]
-        if val in valid_format_opts:
-            self._format = val
-        else:
+        if val not in self._props.valid_format_opts:
             raise ValueError(
-                f"Invalid scale argument. Options: {valid_format_opts}"
+                "Invalid scale argument. Options: "
+                + self._props.valid_format_opts
             )
+        self._format = val

@@ -87,7 +87,7 @@ class GeometricSDErrorBars(ErrorBars):
         return gstd(axis=1)
 
 
-_LITERAL_ERRORBAR_MAP = {
+_FACTORY_MAP = {
     "sd": SDErrorBars,
     "sem": SEMErrorBars,
     "ci95": CI95ErrorBars,
@@ -96,7 +96,7 @@ _LITERAL_ERRORBAR_MAP = {
 }
 
 
-def map_arg_to_errorbar(arg: str) -> type[ErrorBars] | None:
-    if arg in _LITERAL_ERRORBAR_MAP:
-        return _LITERAL_ERRORBAR_MAP[arg]
+def errorbar_factory_fn(arg: str) -> type[ErrorBars] | None:
+    if arg in _FACTORY_MAP:
+        return _FACTORY_MAP[arg]
     return None

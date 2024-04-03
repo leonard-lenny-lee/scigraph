@@ -98,12 +98,12 @@ class IndividualPoints(Points):
         y: NDArray
     ) -> PointCoordinates:
         if y.ndim > 1:
-            x = x.flatten().tile(y.shape[1])
+            x = np.tile(x.values.flatten(), y.shape[1])
             y = y.T.flatten()
         return PointCoordinates(x, y)
 
 
-_LITERAL_POINTS_MAP: dict[str, type[Points]] = {
+_FACTORY_MAP: dict[str, type[Points]] = {
     "mean": MeanPoints,
     "geometric mean": GeometricMeanPoints,
     "median": MedianPoints,
@@ -111,7 +111,7 @@ _LITERAL_POINTS_MAP: dict[str, type[Points]] = {
 }
 
 
-def map_arg_to_points(arg: str) -> type[Points] | None:
-    if arg in _LITERAL_POINTS_MAP:
-        return _LITERAL_POINTS_MAP[arg]
+def points_factory_fn(arg: str) -> type[Points] | None:
+    if arg in _FACTORY_MAP:
+        return _FACTORY_MAP[arg]
     return None

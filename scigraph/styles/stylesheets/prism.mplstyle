@@ -1,10 +1,10 @@
 # Matplotlib style
 
-font.family: Helvetica
+font.family: Arial
 font.size: 8
 
-figure.figsize: 3.3, 2.5
-figure.dpi: 150
+figure.figsize: 3.5, 2.5
+figure.dpi: 150 
 figure.titlesize: 12
 figure.constrained_layout.use: True
 
@@ -24,7 +24,7 @@ ytick.labelsize: 8
 ytick.minor.visible: False
 
 
-axes.prop_cycle: (cycler('color', ['016899', '00c4d5', 'fd4332', 'ff8872']) + cycler('ls', ['-', '--', ':', '-.']) + cycler('marker', ['o', 's', '^', 'x']))   
+axes.prop_cycle: cycler('marker', ['o', 's', '^', 'x'])   
 axes.labelsize: 8
 axes.linewidth: 1.0
 axes.autolimit_mode: round_numbers

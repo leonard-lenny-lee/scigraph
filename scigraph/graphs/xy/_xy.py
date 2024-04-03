@@ -2,12 +2,18 @@ from typing import override, Literal, Self, Any
 
 import matplotlib.pyplot as plt
 
-from ..abc import Graph, GraphTypeCheckComponent
-from .._components.points import map_arg_to_points, Points
-from .._components.errorbars import map_arg_to_errorbar, ErrorBars
-from .._components.axis import Axis
-
 from scigraph.datatables.xy import XYTable
+from scigraph.graphs.abc import Graph, GraphTypeCheckComponent
+from scigraph.graphs._components.points import points_factory_fn, Points
+from scigraph.graphs._components.errorbars import (
+    errorbar_factory_fn,
+    ErrorBars,
+)
+from scigraph.graphs._components.connecting_lines import (
+    connecting_line_factory_fn,
+    ConnectingLine,
+)
+from scigraph.graphs._components.axis import Axis
 from scigraph._typing import PlottableXYAnalysis
 
 XYGraphType = Literal["mean", "geometric mean", "median", "individual"]
@@ -19,7 +25,7 @@ class XYGraph(Graph):
         self._graph_t = graph_t
         self.table: XYTable = None
         self._points: type[Points] = None
-        self._connecting_line = None
+        self._connecting_line: ConnectingLine = None
         self._errorbars: type[ErrorBars] = None
         self._legend_artists: dict[str, list[Any]] = {}
         self._analyses: list[PlottableXYAnalysis] = []
@@ -38,7 +44,7 @@ class XYGraph(Graph):
         return self
 
     def add_points(self) -> Self:
-        points = map_arg_to_points(self._graph_t)
+        points = points_factory_fn(self._graph_t)
         if points is None:
             raise ValueError("Invalid plot argument.")
         self._check_component_compatibility(points)
@@ -49,15 +55,25 @@ class XYGraph(Graph):
         self,
         plot: Literal["sd", "geometric sd", "sem", "ci95", "range"],
     ) -> Self:
-        errorbar = map_arg_to_errorbar(plot)
+        errorbar = errorbar_factory_fn(plot)
         if errorbar is None:
             raise ValueError("Invalid errorbar argument.")
         self._check_component_compatibility(errorbar)
         self._errorbars = errorbar
         return self
 
-    def add_connecting_line(self) -> Self:
-        pass
+    def add_connecting_line(
+        self,
+        ty: XYGraphType,
+        *,
+        join_nan: bool = False
+    ) -> Self:
+        connecting_line = connecting_line_factory_fn(ty, join_nan=join_nan)
+        if connecting_line is None:
+            raise ValueError("Invalid connecting line type")
+        self._check_component_compatibility(connecting_line)
+        self._connecting_line = connecting_line
+        return self
 
     def add_area_fill(
         self,
@@ -102,11 +118,17 @@ class XYGraph(Graph):
                 self._add_legend_artist(group, artist)
             else:
                 # Populate points for other components
-                points = map_arg_to_points(self._graph_t)._prepare_xy(x, y)
+                points = points_factory_fn(self._graph_t)._prepare_xy(x, y)
 
             if self._errorbars is not None:
                 self._errorbars.plot_group(
                     x, y, ax, self.table.xerr, points.y, c=props.color)
+
+            if self._connecting_line is not None:
+                artist = self._connecting_line.plot_group(
+                    x, y, ax, c=props.color, ls=props.linestyle,
+                )
+                self._add_legend_artist(group, artist)
 
         for analysis in self._analyses:
             analysis.plot(ax, self)
