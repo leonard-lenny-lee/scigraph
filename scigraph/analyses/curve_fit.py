@@ -11,7 +11,7 @@ from scipy.optimize import curve_fit
 
 from .abc import XYAnalysis, Plottable
 from scigraph.datatables.xy import XYTable
-from scigraph.graphs.xy import XYPointsGraph, ScaleOpt
+from scigraph.graphs.xy import XYGraph
 
 
 class CurveFit(Plottable, XYAnalysis):
@@ -54,25 +54,27 @@ class CurveFit(Plottable, XYAnalysis):
     def plot(
         self,
         ax: plt.Axes,
-        graph: XYPointsGraph,
+        graph: XYGraph,
     ) -> None:
-        ax.set_prop_cycle(None)  # Reset
         x = self.table.xvalues[:, 0]
-        match graph.xaxis_opts.scale:
-            case ScaleOpt.LINEAR:
+        match graph.xaxis.scale:
+            case "linear":
                 xlim = x.min(), x.max()
                 x = np.linspace(*xlim, self.plot_params.n_points)
-            case ScaleOpt.LOG10:
+            case "log10":
                 x = x[np.nonzero(x)]
                 xlim = np.log10(x.min()), np.log10(x.max())
                 x = np.logspace(*xlim, self.plot_params.n_points)
+            case _:
+                raise NotImplementedError
         for group in self.table.ygroups:
+            props = graph.plot_props[group]
             if self.popt[group] is None:
                 ax.plot([], [])
                 continue
             y = self.predict(x, group)
-            handle, = ax.plot(x, y, marker="")
-            graph._handles[group].append(handle)
+            line, = ax.plot(x, y, c=props.color, marker="", ls=props.linestyle)
+            graph._add_legend_artist(group, line)
 
     @staticmethod
     @abstractmethod
