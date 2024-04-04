@@ -15,23 +15,21 @@ class PointCoordinates(NamedTuple):
 
 class Points(GraphTypeCheckComponent, ABC):
 
-    @classmethod
     def plot_group(
-        cls,
+        self,
         x: NDArray,
         y: NDArray,
         ax: plt.Axes,
         *args,
         **kwargs
     ) -> Any:
-        points = cls._prepare_xy(x, y)
+        points = self._prepare_xy(x, y)
         artist, = ax.plot(points.x, points.y, *args, **kwargs, ls="")
         return artist, points
 
-    @classmethod
     @abstractmethod
     def _prepare_xy(
-        cls,
+        self,
         x: NDArray,
         y: NDArray
     ) -> PointCoordinates: ...
@@ -42,9 +40,8 @@ class MeanPoints(Points):
     TYPES = {"mean"}
 
     @override
-    @classmethod
     def _prepare_xy(
-        cls,
+        self,
         x: NDArray,
         y: NDArray
     ) -> PointCoordinates:
@@ -58,9 +55,8 @@ class GeometricMeanPoints(Points):
     TYPES = {"geometric mean"}
 
     @override
-    @classmethod
     def _prepare_xy(
-        cls,
+        self,
         x: NDArray,
         y: NDArray
     ) -> PointCoordinates:
@@ -75,9 +71,8 @@ class MedianPoints(Points):
     TYPES = {"median"}
 
     @override
-    @classmethod
     def _prepare_xy(
-        cls,
+        self,
         x: NDArray,
         y: NDArray
     ) -> PointCoordinates:
@@ -91,9 +86,8 @@ class IndividualPoints(Points):
     TYPES = {"individual"}
 
     @override
-    @classmethod
     def _prepare_xy(
-        cls,
+        self,
         x: NDArray,
         y: NDArray
     ) -> PointCoordinates:
@@ -111,7 +105,7 @@ _FACTORY_MAP: dict[str, type[Points]] = {
 }
 
 
-def points_factory_fn(arg: str) -> type[Points] | None:
-    if arg in _FACTORY_MAP:
-        return _FACTORY_MAP[arg]
+def points_factory_fn(ty: str) -> Points | None:
+    if ty in _FACTORY_MAP:
+        return _FACTORY_MAP[ty]()
     return None

@@ -44,10 +44,10 @@ class ConnectingLine(GraphTypeCheckComponent, ABC):
         assert points.x.ndim == 1
         assert points.y.ndim == 1
 
-        stacked_array = np.hstack((points.x, points.y))
+        stacked_array = np.vstack((points.x, points.y))
         mask = ~np.any(np.isnan(stacked_array), axis=0)
-        masked_array = stacked_array[mask]
-        return PointCoordinates(*masked_array)
+        masked_array = stacked_array[:, mask]
+        return PointCoordinates(masked_array[0], masked_array[1])
 
 
 class MeanConnectingLine(ConnectingLine):
