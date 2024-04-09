@@ -1,62 +1,106 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import override, Any
+from typing import Mapping, override, Self, TYPE_CHECKING
 
-import numpy as np
 from numpy.typing import NDArray
+from pandas import DataFrame
 from matplotlib.axes import Axes
-from scipy.stats import t, gstd
 
-from ..abc import GraphTypeCheckComponent
+from scigraph.graphs.abc import Artist, TypeChecked
+
+if TYPE_CHECKING:
+    from scigraph.graphs import XYGraph
 
 
-class ErrorBars(GraphTypeCheckComponent, ABC):
+class ErrorBars(Artist, TypeChecked, ABC):
 
-    def plot_group(
+    @override
+    def draw_xy(
         self,
-        x: NDArray,
-        y: NDArray,
+        graph: XYGraph,
         ax: Axes,
-        xerr: NDArray,
-        yori: NDArray,
         *args,
         **kwargs,
     ) -> None:
-        yerr = self._prepare_yerr(y, yori)
-        ax.errorbar(x, yori, xerr=xerr, yerr=yerr,
-                    *args, **kwargs, marker="", ls="")
+        draw_x_errors = graph.table.n_x_replicates > 1
+        draw_y_errors = graph.table.n_y_replicates > 1
+
+        if not draw_x_errors and not draw_y_errors:
+            return
+
+        ori, err = self._prepare_xy(graph)
+        x = ori[graph.table.x_title]
+        x_err = err[graph.table.x_title] if draw_x_errors else None
+
+        for id in graph.table.dataset_ids:
+            y = ori[id]
+            y_err = err[id] if draw_y_errors else None
+            ax.errorbar(x, y, xerr=x_err, yerr=y_err,
+                        *args, **kwargs, marker="", ls="")
 
     @abstractmethod
-    def _prepare_yerr(self, y: NDArray, ori: NDArray) -> NDArray: ...
+    def _prepare_xy(
+        self,
+        graph: XYGraph,
+    ) -> tuple[DataFrame, Errors]: ...
+
+    @classmethod
+    def from_str(cls, s: str) -> Self | None:
+        if s in _FACTORY_MAP:
+            return _FACTORY_MAP[s]()
+        return None
 
 
 class SDErrorBars(ErrorBars):
 
-    TYPES = {"mean"}
+    @override
+    def _prepare_xy(
+        self,
+        graph: XYGraph
+    ) -> tuple[DataFrame, Errors]:
+        ori = graph.table.summarize("mean")
+        err = graph.table.summarize("sd")
+        return ori, err
 
     @override
-    def _prepare_yerr(self, y: NDArray, _: Any) -> NDArray:
-        return y.std(axis=1)
+    @classmethod
+    def _compatible_types(cls) -> set[str]:
+        return {"mean"}
 
 
 class SEMErrorBars(ErrorBars):
 
-    TYPES = {"mean"}
+    @override
+    def _prepare_xy(
+        self,
+        graph: XYGraph
+    ) -> tuple[DataFrame, Errors]:
+        ori = graph.table.summarize("mean")
+        err = graph.table.summarize("sem")
+        return ori, err
 
     @override
-    def _prepare_yerr(self, y: NDArray, _: Any) -> NDArray:
-        count = np.count_nonzero(~np.isnan(y), axis=1, keepdims=True)
-        return y.std(axis=1) / np.sqrt(count)
+    @classmethod
+    def _compatible_types(cls) -> set[str]:
+        return {"mean"}
 
 
 class CI95ErrorBars(ErrorBars):
 
-    TYPES = {"mean", "geometric mean", "median"}
+    @override
+    def _prepare_xy(
+        self,
+        graph: XYGraph
+    ) -> tuple[DataFrame, Errors]:
+        ori = graph.table.summarize(graph._graph_t)
+        err = graph.table.summarize("ci95")
+        return ori, err
 
     @override
-    def _prepare_yerr(self, y: NDArray, _: Any) -> NDArray:
-        n = np.count_nonzero(~np.isnan(y), axis=1, keepdims=True)
-        critical_val = t.ppf(0.975, n - 1)
-        return critical_val * y.std(axis=1) / np.sqrt(n)
+    @classmethod
+    def _compatible_types(cls) -> set[str]:
+        return {"mean", "geometric mean", "median"}
 
 
 class RangeErrorBars(ErrorBars):
@@ -64,10 +108,20 @@ class RangeErrorBars(ErrorBars):
     TYPES = {"mean", "median"}
 
     @override
-    def _prepare_yerr(self, y: NDArray, ori: NDArray) -> NDArray:
-        lower = ori - y.min(axis=1)
-        upper = y.max(axis=1) - ori
-        return lower, upper
+    def _prepare_xy(
+        self,
+        graph: XYGraph
+    ) -> tuple[DataFrame, Errors]:
+        ori = graph.table.summarize(graph._graph_t)
+        lower = ori - graph.table.summarize("min")
+        upper = graph.table.summarize("max") - ori
+        err = {col: (lower[col].values, upper[col].values) for col in ori}
+        return ori, err
+
+    @override
+    @classmethod
+    def _compatible_types(cls) -> set[str]:
+        return {"mean", "median"}
 
 
 class GeometricSDErrorBars(ErrorBars):
@@ -75,8 +129,13 @@ class GeometricSDErrorBars(ErrorBars):
     TYPES = {"geometric mean"}
 
     @override
-    def _prepare_yerr(self, y: NDArray, _: Any) -> NDArray:
-        return gstd(axis=1)
+    def _prepare_xy(
+        self,
+        graph: XYGraph
+    ) -> tuple[DataFrame, Errors]:
+        ori = graph.table.summarize("mean")
+        err = graph.table.summarize("geometric sd")
+        return ori, err
 
 
 _FACTORY_MAP = {
@@ -87,8 +146,4 @@ _FACTORY_MAP = {
     "geometric sd": GeometricSDErrorBars,
 }
 
-
-def errorbar_factory_fn(ty: str) -> ErrorBars | None:
-    if ty in _FACTORY_MAP:
-        return _FACTORY_MAP[ty]()
-    return None
+type Errors = DataFrame | Mapping[str, tuple[NDArray, NDArray]]

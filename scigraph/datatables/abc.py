@@ -1,5 +1,10 @@
-from abc import ABC, abstractmethod
+from __future__ import annotations
 
+from abc import ABC, abstractmethod
+from collections.abc import Iterator
+from typing import NamedTuple
+
+from numpy.typing import NDArray
 from pandas import DataFrame
 
 
@@ -8,6 +13,19 @@ class DataTable(ABC):
     @abstractmethod
     def as_df(self) -> DataFrame:
         pass
+
+    @property
+    @abstractmethod
+    def dataset_ids(self) -> list[str]:
+        pass
+
+    @abstractmethod
+    def get_dataset(self, name: str) -> DataSet:
+        pass
+
+    def datasets_itertuples(self) -> Iterator[tuple[str, DataSet]]:
+        for id in self.dataset_ids:
+            yield id, self.get_dataset(id)
 
     @classmethod
     def _default_names(cls, n: int, prefix: str = "Group") -> list[str]:
@@ -21,3 +39,8 @@ class DataTable(ABC):
                 name = f"{prefix} {chr(ascii_a + k1)}{chr(ascii_a + k2)}"
             names.append(name)
         return names
+
+
+class DataSet(NamedTuple):
+    x: NDArray
+    y: NDArray

@@ -2,11 +2,14 @@ from typing import NamedTuple
 
 from matplotlib.axis import Axis as MPLAxis
 
-from .._formatters import LOG10_TICK_FORMATTERS, LINEAR_TICK_FORMATTERS
+from .._formatters import (
+    LOG10_TICK_FORMATTERS,
+    LINEAR_TICK_FORMATTERS
+)
 
 
 class _ScaleProperties(NamedTuple):
-    valid_format_opts: str
+    valid_format_opts: set[str]
     default_format_opt: str
     tick_fmt_fns: dict
     mpl_arg: str
@@ -32,9 +35,9 @@ class Axis:
 
     def __init__(
         self,
-        title: str = None,
+        title: str = "",
         scale: str = "linear",
-        format: str = None
+        format: str | None = None
     ) -> None:
         self._format = None
         self.title = title
@@ -44,7 +47,6 @@ class Axis:
         self.format = format
 
     def format_axis(self, axis: MPLAxis) -> None:
-        axis._set_axes_scale(self._props.mpl_arg)
         fmt_fn = self._props.tick_fmt_fns[self.format]
         fmt_fn(axis)
 
@@ -71,6 +73,8 @@ class Axis:
 
     @property
     def format(self) -> str:
+        if self._format is None:
+            return self._props.default_format_opt
         return self._format
 
     @format.setter
@@ -78,6 +82,6 @@ class Axis:
         if val not in self._props.valid_format_opts:
             raise ValueError(
                 "Invalid scale argument. Options: "
-                + self._props.valid_format_opts
+                + ", ".join(self._props.valid_format_opts)
             )
         self._format = val

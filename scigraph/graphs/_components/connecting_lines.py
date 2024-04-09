@@ -1,128 +1,155 @@
-from abc import ABC, abstractmethod
-from typing import Any, NamedTuple, override
+"""
+Artists that connect average of replicates together, or individual replicates
+"""
+from __future__ import annotations
 
-import matplotlib.pyplot as plt
+from abc import ABC, abstractmethod
+from typing import Self, override, TYPE_CHECKING
+
+from matplotlib.axes import Axes
+from matplotlib.lines import Line2D
 import numpy as np
 from numpy.typing import NDArray
+from pandas import DataFrame
 
-from scigraph.graphs.abc import GraphTypeCheckComponent
+from scigraph.graphs.abc import Artist, TypeChecked
+
+if TYPE_CHECKING:
+    from scigraph.graphs import XYGraph
 
 
-class PointCoordinates(NamedTuple):
-    x: NDArray
-    y: NDArray
-
-
-class ConnectingLine(GraphTypeCheckComponent, ABC):
+class ConnectingLine(Artist, TypeChecked, ABC):
 
     def __init__(self, join_nan: bool) -> None:
         self.join_nan = join_nan
 
-    def plot_group(
+    @override
+    def draw_xy(
         self,
-        x: NDArray,
-        y: NDArray,
-        ax: plt.Axes,
+        graph: XYGraph,
+        ax: Axes,
         *args,
-        **kwargs
-    ) -> Any:
-        points = self._prepare_xy(x, y)
-        if self.join_nan:
-            points = self._mask_nan(points)
-        artist, = ax.plot(points.x, points.y, *args, **kwargs, marker="")
-        return artist
+        **kwargs,
+    ) -> None:
+        agg = self._prepare_xy(graph)
+
+        for id in graph.table.dataset_ids:
+            props = graph.plot_properties[id]
+            x = np.array(agg[graph.table.x_title].values).flatten()
+            y = np.array(agg[id].values).flatten()
+            if self.join_nan:
+                # Mask NaN values so there is a continuous joined line
+                x, y = self._mask_nan(x, y)
+            artist, = ax.plot(x, y, *args, **kwargs,
+                              marker="", color=props.color, ls=props.linestyle)
+            graph._add_legend_artist(id, artist)
 
     @abstractmethod
     def _prepare_xy(
         self,
-        x: NDArray,
-        y: NDArray
-    ) -> PointCoordinates: ...
+        graph: XYGraph,
+    ) -> DataFrame: ...
 
-    def _mask_nan(self, points: PointCoordinates) -> PointCoordinates:
-        assert points.x.shape == points.y.shape
-        assert points.x.ndim == 1
-        assert points.y.ndim == 1
+    def _mask_nan(self, x: NDArray, y: NDArray) -> tuple[NDArray, NDArray]:
+        assert x.shape == y.shape
+        assert x.ndim == 1
+        assert y.ndim == 1
 
-        stacked_array = np.vstack((points.x, points.y))
+        stacked_array = np.vstack((x, y))
         mask = ~np.any(np.isnan(stacked_array), axis=0)
         masked_array = stacked_array[:, mask]
-        return PointCoordinates(masked_array[0], masked_array[1])
+        return masked_array[0], masked_array[1]
+
+    @classmethod
+    def from_str(cls, s: str, *args, **kwargs) -> Self | None:
+        if s in _FACTORY_MAP:
+            return _FACTORY_MAP[s](*args, **kwargs)
+        return None
 
 
 class MeanConnectingLine(ConnectingLine):
 
-    TYPES = {"mean", "individual"}
-
     @override
     def _prepare_xy(
         self,
-        x: NDArray,
-        y: NDArray
-    ) -> PointCoordinates:
-        if y.ndim > 1:
-            y = y.mean(axis=1)
-        return PointCoordinates(x, y)
+        graph: XYGraph,
+    ) -> DataFrame:
+        return graph.table.summarize("mean")
+
+    @override
+    @classmethod
+    def _compatible_types(cls) -> set[str]:
+        return {"mean", "individual"}
 
 
 class GeometricMeanConnectingLine(ConnectingLine):
 
-    TYPES = {"geometric mean", "individual"}
-
     @override
     def _prepare_xy(
         self,
-        x: NDArray,
-        y: NDArray
-    ) -> PointCoordinates:
-        if y.ndim > 1:
-            sample_count = np.count_nonzero(~np.isnan(y), axis=1)
-            y = y.prod(axis=1) ** (1 / sample_count)
-        return PointCoordinates(x, y)
+        graph: XYGraph,
+    ) -> DataFrame:
+        return graph.table.summarize("geometric mean")
+
+    @override
+    @classmethod
+    def _compatible_types(cls) -> set[str]:
+        return {"geometric mean", "individual"}
 
 
 class MedianConnectingLine(ConnectingLine):
 
-    TYPES = {"median", "individual"}
-
     @override
     def _prepare_xy(
         self,
-        x: NDArray,
-        y: NDArray
-    ) -> PointCoordinates:
-        if y.ndim > 1:
-            y = y.median(axis=1)
-        return PointCoordinates(x, y)
+        graph: XYGraph,
+    ) -> DataFrame:
+        return graph.table.summarize("median")
+
+    @override
+    @classmethod
+    def _compatible_types(cls) -> set[str]:
+        return {"median", "individual"}
 
 
 class IndividualConnectingLine(ConnectingLine):
 
-    TYPES = {"individual"}
-
     @override
-    def plot_group(
+    def draw_xy(
         self,
-        x: NDArray,
-        y: NDArray,
-        ax: plt.Axes,
+        graph: XYGraph,
+        ax: Axes,
         *args,
         **kwargs,
-    ) -> Any:
-        for y_ in y.T:
-            points = PointCoordinates(x, y_)
-            if self.join_nan:
-                points = self._mask_nan(points)
-            artist, = ax.plot(points.x, points.y, *args, **kwargs, marker="")
-        return artist
+    ) -> None:
+        x = graph.table.x_values.mean(axis=1).flatten()
+
+        for id, data in graph.table.datasets_itertuples():
+            props = graph.plot_properties[id]
+            for y in data.y.T:
+                assert x.shape == y.shape
+                if self.join_nan:
+                    x_, y = self._mask_nan(x, y)
+                else:
+                    x_ = x
+                ax.plot(x_, y, *args, **kwargs,
+                                  marker="", color=props.color, ls=props.linestyle)
+            artist = Line2D([], [],
+                            marker="", color=props.color, ls=props.linestyle)
+            graph._add_legend_artist(id, artist)
+
 
     @override
     def _prepare_xy(
         self,
-        x: NDArray,
-        y: NDArray,
-    ) -> PointCoordinates:
+        graph: XYGraph,
+    ) -> DataFrame:
         raise NotImplementedError
+
+    @override
+    @classmethod
+    def _compatible_types(cls) -> set[str]:
+        return {"individual"}
 
 
 _FACTORY_MAP = {
@@ -131,13 +158,3 @@ _FACTORY_MAP = {
     "median": MeanConnectingLine,
     "individual": IndividualConnectingLine,
 }
-
-
-def connecting_line_factory_fn(
-    ty: str,
-    *args,
-    **kwargs,
-) -> ConnectingLine | None:
-    if ty in _FACTORY_MAP:
-        return _FACTORY_MAP[ty](*args, **kwargs)
-    return None

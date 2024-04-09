@@ -1,100 +1,137 @@
-from abc import ABC, abstractmethod
-from typing import override, NamedTuple, Any
+from __future__ import annotations
 
-import matplotlib.pyplot as plt
+from abc import abstractmethod
+from typing import override, TYPE_CHECKING
+import logging
+
+from matplotlib.axes import Axes
 import numpy as np
-from numpy.typing import NDArray
+from pandas import DataFrame
 
-from ..abc import GraphTypeCheckComponent
+from ..abc import TypeChecked, Artist
 
-
-class PointCoordinates(NamedTuple):
-    x: NDArray
-    y: NDArray
+if TYPE_CHECKING:
+    from scigraph.graphs import XYGraph
 
 
-class Points(GraphTypeCheckComponent, ABC):
+class Points(Artist, TypeChecked):
 
-    def plot_group(
+    @override
+    def draw_xy(
         self,
-        x: NDArray,
-        y: NDArray,
-        ax: plt.Axes,
+        graph: XYGraph,
+        ax: Axes,
         *args,
-        **kwargs
-    ) -> Any:
-        points = self._prepare_xy(x, y)
-        artist, = ax.plot(points.x, points.y, *args, **kwargs, ls="")
-        return artist, points
+        **kwargs,
+    ) -> None:
+        agg = self._prepare_xy(graph)
+        x = agg[graph.table.x_title]
+
+        for id in graph.table.dataset_ids:
+            props = graph.plot_properties[id]
+            y = agg[id]
+            artist, = ax.plot(x, y, *args, **kwargs,
+                              marker=props.marker, color=props.color, ls="")
+            graph._add_legend_artist(id, artist)
 
     @abstractmethod
     def _prepare_xy(
         self,
-        x: NDArray,
-        y: NDArray
-    ) -> PointCoordinates: ...
+        graph: XYGraph,
+    ) -> DataFrame:
+        """Aggregate replicates in dataset"""
+        pass
+
+    @classmethod
+    def from_str(cls, s: str) -> Points | None:
+        if s in _FACTORY_MAP:
+            return _FACTORY_MAP[s]()
+        return None
 
 
 class MeanPoints(Points):
 
-    TYPES = {"mean"}
-
     @override
     def _prepare_xy(
         self,
-        x: NDArray,
-        y: NDArray
-    ) -> PointCoordinates:
-        if y.ndim > 1:
-            y = y.mean(axis=1)
-        return PointCoordinates(x, y)
+        graph: XYGraph,
+    ) -> DataFrame:
+        return graph.table.summarize("mean")
+
+    @override
+    @classmethod
+    def _compatible_types(cls) -> set[str]:
+        return {"mean"}
 
 
 class GeometricMeanPoints(Points):
 
-    TYPES = {"geometric mean"}
-
     @override
     def _prepare_xy(
         self,
-        x: NDArray,
-        y: NDArray
-    ) -> PointCoordinates:
-        if y.ndim > 1:
-            sample_count = np.count_nonzero(~np.isnan(y), axis=1)
-            y = y.prod(axis=1) ** (1 / sample_count)
-        return PointCoordinates(x, y)
+        graph: XYGraph,
+    ) -> DataFrame:
+        return graph.table.summarize("geometric mean")
 
+    @override
+    @classmethod
+    def _compatible_types(cls) -> set[str]:
+        return {"geometric mean"}
 
 class MedianPoints(Points):
 
-    TYPES = {"median"}
-
     @override
     def _prepare_xy(
         self,
-        x: NDArray,
-        y: NDArray
-    ) -> PointCoordinates:
-        if y.ndim > 1:
-            y = y.median(axis=1)
-        return PointCoordinates(x, y)
+        graph: XYGraph,
+    ) -> DataFrame:
+        return graph.table.summarize("median")
+
+    @override
+    @classmethod
+    def _compatible_types(cls) -> set[str]:
+        return {"median"}
 
 
 class IndividualPoints(Points):
 
-    TYPES = {"individual"}
+    @override
+    def draw_xy(
+        self,
+        graph: XYGraph,
+        ax: Axes,
+        *args,
+        **kwargs,
+    ) -> None:
+        # No aggregation
+        x = graph.table.x_values
+        if graph.table.n_x_replicates > 1:
+            x = x.mean(axis=1)
+            logging.warn(
+                "Multiple X values are incompatible with individual points "
+                "and have been averaged.")
+        # Match y series dimensions
+        x = np.tile(x.flatten(), graph.table.n_y_replicates)
+
+        for id, dataset in graph.table.datasets_itertuples():
+            props = graph.plot_properties[id]
+            y = dataset.y.T.flatten()
+            assert len(x) == len(y)
+            artist, = ax.plot(x, y, *args, **kwargs,
+                              marker=props.marker, color=props.color, ls="")
+            graph._add_legend_artist(id, artist)
 
     @override
     def _prepare_xy(
         self,
-        x: NDArray,
-        y: NDArray
-    ) -> PointCoordinates:
-        if y.ndim > 1:
-            x = np.tile(x.values.flatten(), y.shape[1])
-            y = y.T.flatten()
-        return PointCoordinates(x, y)
+        graph: XYGraph,
+    ) -> DataFrame:
+        raise NotImplementedError
+
+    @override
+    @classmethod
+    def _compatible_types(cls) -> set[str]:
+        return {"individual"}
 
 
 _FACTORY_MAP: dict[str, type[Points]] = {
@@ -103,9 +140,3 @@ _FACTORY_MAP: dict[str, type[Points]] = {
     "median": MedianPoints,
     "individual": IndividualPoints,
 }
-
-
-def points_factory_fn(ty: str) -> Points | None:
-    if ty in _FACTORY_MAP:
-        return _FACTORY_MAP[ty]()
-    return None

@@ -1,26 +1,36 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
+from typing import Any, TYPE_CHECKING
 
-import matplotlib.pyplot as plt
+from matplotlib.axes import Axes
 
-from scigraph.datatables.xy import XYTable
-from scigraph.graphs.abc import Graph
+if TYPE_CHECKING:
+    from scigraph.datatables.abc import DataTable
+    from scigraph.graphs.abc import Graph
 
 
-class Analysis(ABC):
+class Analysis[T: DataTable](ABC):
+
+    @property
+    @abstractmethod
+    def table(self) -> T:
+        pass
 
     @abstractmethod
-    def analyze(self) -> None:
+    def analyze(self) -> Any:
         pass
 
 
-class Plottable(ABC):
+class GraphableAnalysis[T: Graph](Analysis, ABC):
 
     @abstractmethod
-    def plot(self, ax: plt.Axes, graph: Graph, *args, **kwargs) -> None:
-        pass
+    def draw(
+        self,
+        graph: T,
+        ax: Axes,
+        *args,
+        **kwargs,
+    ) -> None:
+        ...
 
-
-class XYAnalysis(Analysis):
-
-    def __init__(self, table: XYTable) -> None:
-        self.table = table
