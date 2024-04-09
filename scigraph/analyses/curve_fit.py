@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import logging
-from typing import override
+from typing import Literal, override
 
 from matplotlib.axes import Axes
 import numpy as np
@@ -18,14 +18,17 @@ class CurveFit(GraphableAnalysis, ABC):
     def __init__(
         self,
         table: XYTable,
+        include: list[str] | None = None,
         exclude: list[str] | None = None,
     ) -> None:
         self._table = table
 
         # Fit attributes
-        self.p0 = None
-        self.bounds = None
-        self.exclude = exclude
+        self.p0: NDArray | None = None
+        self._upper_bounds = np.full(len(self._params()), +np.nan)
+        self._lower_bounds = np.full(len(self._params()), -np.nan)
+        self._bounds = self._lower_bounds, self._upper_bounds
+        self._init_include_list(include, exclude)
 
         # Results
         self._popt: dict[str, tuple[float, ...]] = {}
@@ -44,6 +47,33 @@ class CurveFit(GraphableAnalysis, ABC):
     def analyze(self) -> DataFrame:
         return self.fit()
 
+    def add_constraint(
+        self,
+        param: str,
+        ty: Literal['=', ">", "<"],
+        value: float,
+        *,
+        alpha: float = 0.01,
+    ) -> None:
+        try:
+            i = self._params().index(param)
+        except ValueError:
+            raise ValueError(
+                f"{param} is not a valid parameter. Valid options: " +
+                f"{", ".join(self._params())}"
+            )
+        match ty:
+            case "=":
+                err = abs(value) * alpha / 2
+                self._upper_bounds[i] = value + err
+                self._lower_bounds[i] = value - err
+            case ">":
+                self._lower_bounds[i] = value
+            case "<":
+                self._upper_bounds[i] = value
+            case _:
+                raise ValueError("Invalid constraint type argument.")
+
     def fit(self) -> DataFrame:
         popts = {}
         pcovs = {}
@@ -53,7 +83,7 @@ class CurveFit(GraphableAnalysis, ABC):
         x = np.tile(x, self.table.n_y_replicates)
 
         for id, data in self.table.datasets_itertuples():
-            if self.exclude is not None and id in self.exclude:
+            if id not in self._include:
                 continue
 
             y = data.y.T.flatten()
@@ -61,7 +91,8 @@ class CurveFit(GraphableAnalysis, ABC):
             # Remove NaN values
             mask = ~(np.isnan(y) | np.isnan(x))
             try:
-                popt, pcov = curve_fit(self._f, x[mask], y[mask])
+                popt, pcov = curve_fit(self._f, x[mask], y[mask],
+                                       p0=self.p0, bounds=self._bounds)
             except RuntimeError as e:
                 logging.warn(e)
                 popt, pcov = None, None
@@ -82,19 +113,27 @@ class CurveFit(GraphableAnalysis, ABC):
         self,
         graph: XYGraph,
         ax: Axes,
+        x_min: int | None = None,
+        x_max: int | None = None,
         n_points: int = 1000,
         *args,
         **kwargs,
     ) -> None:
+        # Determine x limits
         x = self.table.x_values.flatten()
+        if graph.xaxis.scale == "log10":
+            x = x[np.nonzero(x)]
+        if x_min is None:
+            x_min = x.min()
+        if x_max is None:
+            x_max = x.max()
 
         match graph.xaxis.scale:
             case "linear":
-                xlim = x.min(), x.max()
-                x = np.linspace(*xlim, n_points)
+                xlim = x_min, x_max
+                x = np.linspace(*xlim, n_points)  # type: ignore
             case "log10":
-                x = x[np.nonzero(x)]
-                xlim = np.log10(x.min()), np.log10(x.max())
+                xlim = np.log10(x_min), np.log10(x_max)  # type: ignore
                 x = np.logspace(*xlim, n_points)
             case _:
                 raise NotImplementedError
@@ -115,6 +154,21 @@ class CurveFit(GraphableAnalysis, ABC):
     @staticmethod
     @abstractmethod
     def _params() -> tuple[str, ...]: ...
+
+    def _init_include_list(
+        self,
+        include: list[str] | None,
+        exclude: list[str] | None,
+    ) -> None:
+        if include is not None and exclude is not None:
+            raise ValueError("Include and exclude cannot both be specified.")
+        
+        if include is not None:
+            self._include = include
+        elif exclude is not None:
+            self._include = [dataset for dataset in self._table.dataset_ids
+                             if dataset not in exclude]
+
 
 
 class Constant(CurveFit):
