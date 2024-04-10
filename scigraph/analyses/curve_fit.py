@@ -13,7 +13,7 @@ from scigraph.datatables import XYTable
 from scigraph.graphs import XYGraph
 
 
-class CurveFit(GraphableAnalysis, ABC):
+class CurveFit(GraphableAnalysis[XYTable, XYGraph], ABC):
 
     def __init__(
         self,
@@ -32,7 +32,6 @@ class CurveFit(GraphableAnalysis, ABC):
 
         # Results
         self._popt: dict[str, tuple[float, ...]] = {}
-        self.pcov = None
 
     @property
     @override
@@ -57,11 +56,11 @@ class CurveFit(GraphableAnalysis, ABC):
     ) -> None:
         try:
             i = self._params().index(param)
-        except ValueError:
+        except ValueError as e:
             raise ValueError(
                 f"{param} is not a valid parameter. Valid options: " +
                 f"{", ".join(self._params())}"
-            )
+            ) from e
         match ty:
             case "=":
                 err = abs(value) * alpha / 2
@@ -101,7 +100,7 @@ class CurveFit(GraphableAnalysis, ABC):
             pcovs[id] = pcov
 
         self._popt = popts
-        self.pcov = pcovs
+        self._pcov = pcovs
         return self.popt
 
     def predict(self, x: NDArray, dataset: str) -> NDArray:

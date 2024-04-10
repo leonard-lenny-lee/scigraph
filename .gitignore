@@ -161,3 +161,7 @@ cython_debug/
 
 # macOS
 .DS_Store
+
+# Dev files
+test.py
+todo.md

@@ -21,19 +21,17 @@ class XYGraph(Graph):
         table: XYTable,
         graph_t: Literal["mean", "geometric mean", "median", "individual"],
     ) -> None:
+        super().__init__()
         # Components
         self._points: Points | None = None
         self._connecting_line: ConnectingLine | None = None
         self._errorbars: ErrorBars | None = None
-        self._legend_artists: dict[str, list[Any]] = {}
-        self._linked_analyses: list[GraphableAnalysis] = []
 
         # Config
         self._graph_t = graph_t
         self.xaxis = Axis()
         self.yaxis = Axis()
         self.secondary_yaxis = None
-        self.include_legend = True
 
         self.link_table(table)
 

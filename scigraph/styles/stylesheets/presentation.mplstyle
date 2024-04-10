@@ -1,11 +1,13 @@
 # Matplotlib style for presentations, inspired by the style of the Economist
 
-font.family: Arial
+font.family: Roboto
 font.size: 8
 
 figure.figsize: 3.3, 2.5
 figure.dpi: 150
 figure.constrained_layout.use: True
+figure.constrained_layout.h_pad: 0.1
+figure.constrained_layout.w_pad: 0.1
 figure.titlesize: 10
 figure.titleweight: bold
 
@@ -39,10 +41,12 @@ axes.spines.left: False
 
 axes.grid: True
 axes.grid.axis: y
+grid.linewidth: 0.5
 axes.axisbelow: True
 
-lines.linewidth: 1
+lines.linewidth: 0.5
 lines.markersize: 3
+lines.markeredgewidth: 0.5
 
 legend.frameon: True
 legend.fontsize: 8

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Self, TYPE_CHECKING
+from typing import Any, Self, TYPE_CHECKING
 
 from scigraph.styles._plot_properties import (
     generate_plot_prop_cycle,
@@ -15,14 +15,19 @@ if TYPE_CHECKING:
     from scigraph.graphs import XYGraph
 
 
-class Graph[T: DataTable, U: GraphableAnalysis](ABC):
+class Graph[T: DataTable](ABC):
+
+    def __init__(self) -> None:
+        self._legend_artists: dict[str, list[Any]] = {}
+        self._linked_analyses: list[GraphableAnalysis] = []
+        self.include_legend = True
 
     @abstractmethod
     def link_table(self, table: T) -> None:
         self.table = table
 
     @abstractmethod
-    def link_analysis(self, analysis: U) -> Self: ...
+    def link_analysis(self, analysis: GraphableAnalysis) -> Self: ...
 
     @abstractmethod
     def draw(self, ax: Axes | None) -> Axes: ...

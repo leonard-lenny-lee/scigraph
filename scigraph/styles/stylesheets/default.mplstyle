@@ -1,12 +1,14 @@
 # Matplotlib style
 
-font.family: Helvetica
+font.family: Roboto
 font.size: 8
 
 figure.figsize: 3.3, 2.5
 figure.dpi: 150
 figure.titlesize: 12
 figure.constrained_layout.use: True
+figure.constrained_layout.h_pad: 0.1
+figure.constrained_layout.w_pad: 0.1
 
 savefig.dpi: 300
 savefig.bbox: tight

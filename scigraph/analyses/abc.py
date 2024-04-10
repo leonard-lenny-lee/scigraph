@@ -22,12 +22,12 @@ class Analysis[T: DataTable](ABC):
         pass
 
 
-class GraphableAnalysis[T: Graph](Analysis, ABC):
+class GraphableAnalysis[T: DataTable, G: Graph](Analysis[T], ABC):
 
     @abstractmethod
     def draw(
         self,
-        graph: T,
+        graph: G,
         ax: Axes,
         *args,
         **kwargs,
