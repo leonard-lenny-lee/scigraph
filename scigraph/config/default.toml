@@ -1,0 +1,45 @@
+[datatables]
+
+[datatables.xy]
+x_title = "X"
+y_title = "Y"
+
+
+[layout]
+
+[layout.caption]
+direction  = "down"
+pad.top    = 2 
+pad.left   = 2 
+pad.right  = 2 
+pad.bottom = 2 
+
+[layout.caption.heading_one]
+size = 10
+weight = "bold"
+color = "black"
+linespacing = 1.2
+spacing_before = 2
+spacing_after = 2
+vertical_alignment = "top"
+horizontal_alignment = "left"
+
+[layout.caption.heading_two]
+size = 8
+weight = "bold"
+color = "black"
+linespacing = 1.2
+spacing_before = 2
+spacing_after = 2
+vertical_alignment = "top"
+horizontal_alignment = "left"
+
+[layout.caption.text]
+size = 8
+weight = "bold"
+color = "black"
+linespacing = 1.2
+spacing_before = 2
+spacing_after = 2
+vertical_alignment = "top"
+horizontal_alignment = "left"
