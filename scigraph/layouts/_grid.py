@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Iterator, TYPE_CHECKING, override
+from typing import Iterator, TYPE_CHECKING, override
 
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
@@ -35,7 +35,7 @@ class GridLayout(Layout):
         super().link_graph(graph, key)
 
     @override
-    def draw(self, **fig_kw) -> tuple[Figure, Any]:
+    def _draw(self, **fig_kw) -> Figure:
         if "figsize" not in fig_kw:
             figsize = plt.rcParams["figure.figsize"]
             figsize = figsize[0] * self._ncols, figsize[1] * self._nrows
@@ -51,14 +51,12 @@ class GridLayout(Layout):
 
             for ax, graph in zip(ax_row, g_row):
                 if graph is not None:
-                    if self.create_header_legend:
+                    if self._create_layout_legend:
                         # Suppress axes legends
                         graph.include_legend = False
                     graph.draw(ax)
 
-        self._draw_header(fig)
-        self._draw_footer(fig)
-        return fig, axes
+        return fig
 
     @override
     def get_position(self, key: tuple[int, int]) -> Graph | None:

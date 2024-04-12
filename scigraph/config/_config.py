@@ -8,7 +8,7 @@ import tomllib
 from typing import Any, Self
 import logging
 
-from _schema import SCHEMA, Param
+from ._schema import SCHEMA, Param
 
 
 DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.joinpath("default.toml")
@@ -182,8 +182,3 @@ class InvalidParamValue:
 type ConfigParseError = MissingParam | UnknownParam | InvalidParamType | InvalidParamValue
 
 SG_DEFAULTS = DefaultsConfiguration.load_default()
-
-if __name__ == "__main__":
-    # PARSE TESTING
-    cfg = DefaultsConfiguration._from_toml(DEFAULT_CONFIG_PATH)
-    print(cfg)

@@ -5,12 +5,10 @@ from pandas import DataFrame, MultiIndex
 from scipy.stats import t, gstd
 
 from .abc import DataTable, DataSet
+from scigraph.config import SG_DEFAULTS
 
 
 class XYTable(DataTable):
-
-    DEFAULT_X_TITLE = "X"
-    DEFAULT_Y_TITLE = "Y"
 
     def __init__(
         self,
@@ -33,8 +31,8 @@ class XYTable(DataTable):
         self._n_datasets = n_datasets
         self._dataset_names = self._default_names(n_datasets)
 
-        self.x_title: str = self.DEFAULT_X_TITLE
-        self.y_title: str = self.DEFAULT_Y_TITLE
+        self.x_title: str = SG_DEFAULTS["datatables.xy.x_title"]
+        self.y_title: str = SG_DEFAULTS["datatables.xy.y_title"]
 
     @override
     def as_df(self) -> DataFrame:

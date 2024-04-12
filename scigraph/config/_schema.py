@@ -17,12 +17,12 @@ class Param[T](NamedTuple):
             )
         )
 
+
 # Generic Params
 String = Param(str, None)
 Int = Param(int, None)
 Float = Param(float, None)
 Num = Param((int, float), None)
-
 
 TEXT_SCHEMA = {
     "size": Num,
@@ -37,6 +37,13 @@ TEXT_SCHEMA = {
     "horizontal_alignment": Param(str, {"left", "right", "center"}),
 }
 
+LINE_SCHEMA = {
+    "length": Num,
+    "width": Num,
+    "color": String,
+    "spacing_before": Num,
+    "spacing_after": Num,
+}
 
 SCHEMA = {
     "datatables": {
@@ -57,6 +64,8 @@ SCHEMA = {
             "heading_one": TEXT_SCHEMA,
             "heading_two": TEXT_SCHEMA,
             "text": TEXT_SCHEMA,
+            "dividing_line": LINE_SCHEMA,
+            "branding_line": LINE_SCHEMA,
         },
     },
 }
