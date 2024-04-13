@@ -81,6 +81,13 @@ class GridLayout(Layout):
                 yield self._graphs[row][col]
 
     @override
+    def iter_graphs(self) -> Iterator[Graph]:
+        for pos in self.iter_positions():
+            if pos is None:
+                continue
+            yield pos
+
+    @override
     def _get_empty_pos_key(self) -> tuple[int, int]:
         for row_idx, row in enumerate(self._graphs):
             for col_idx, g in enumerate(row):

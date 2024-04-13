@@ -101,6 +101,7 @@ class XYTable(DataTable):
         return out
 
     @property
+    @override
     def values(self) -> NDArray:
         return self._values
 
@@ -140,14 +141,6 @@ class XYTable(DataTable):
 
         self._dataset_names = names
         self._generate_dataset_index_map()
-
-    @property
-    def nrows(self) -> int:
-        return self._values.shape[0]
-
-    @property
-    def ncols(self) -> int:
-        return self._values.shape[1]
 
     def _columns(self) -> MultiIndex:
         tuples = []

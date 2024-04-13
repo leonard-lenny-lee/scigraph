@@ -26,7 +26,7 @@ class Caption:
     def add_text(
         self,
         s: str,
-        ty: Literal["h1", "h2", "t"],
+        ty: Literal["h1", "h2", "p", "s"],
         *,
         size: float | None = None,
         weight: str | None = None,
@@ -37,16 +37,10 @@ class Caption:
         vertical_alignment : str | None = None,
         horizontal_alignment : str | None = None,
     ) -> Self:
-        key = "layout.caption."
-        match ty:
-            case "h1":
-                key += "heading_one"
-            case "h2":
-                key += "heading_two"
-            case "t":
-                key += "text"
-            case _:
-                raise ValueError(f"Invalid type {ty}")
+        key = "layout.caption.text."
+        if ty not in ["h1", "h2", "p", "s"]:
+            raise ValueError(f"Invalid type {ty}")
+        key += ty
         cfg = SG_DEFAULTS[key]
         assert isinstance(cfg, dict)
         kwargs = locals()
@@ -66,9 +60,9 @@ class Caption:
         spacing_before: float | None = None,
         spacing_after: float | None = None,
     ) -> Self:
-        if not (ty == "dividing" or ty == "branding"):
+        if ty not in ["dividing", "branding"]:
             raise ValueError(f"Invalid type {ty}")
-        key = f"layout.caption.{ty}_line"
+        key = f"layout.caption.line.{ty}"
         cfg = SG_DEFAULTS[key]
         kwargs = locals()
         for k in cfg:

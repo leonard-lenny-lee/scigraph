@@ -40,7 +40,19 @@ class DataTable(ABC):
             names.append(name)
         return names
 
+    @property
+    @abstractmethod
+    def values(self) -> NDArray: ...
+
+    @property
+    def nrows(self) -> int:
+        return self.values.shape[0]
+
+    @property
+    def ncols(self) -> int:
+        return self.values.shape[1]
+
 
 class DataSet(NamedTuple):
-    x: NDArray
+    x: NDArray | None
     y: NDArray

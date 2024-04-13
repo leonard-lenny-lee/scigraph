@@ -4,6 +4,10 @@
   x_title = "X"
   y_title = "Y"
 
+  [datatables.column]
+  x_title = "X"
+  y_title = "Y"
+
 
 [layout]
 
@@ -14,46 +18,60 @@
   pad.right  = 12
   pad.bottom = 2 
 
-    [layout.caption.heading_one]
-    size = 10
-    weight = "bold"
-    color = "black"
-    linespacing = 1.2
-    spacing_before = 4
-    spacing_after = 6
-    vertical_alignment = "top"
-    horizontal_alignment = "left"
-
-    [layout.caption.heading_two]
-    size = 8
-    weight = "bold"
-    color = "black"
-    linespacing = 1.2
-    spacing_before = 0
-    spacing_after = 0
-    vertical_alignment = "top"
-    horizontal_alignment = "left"
-    
     [layout.caption.text]
-    size = 8
-    weight = "regular"
-    color = "black"
-    linespacing = 1.2
-    spacing_before = 0
-    spacing_after = 0
-    vertical_alignment = "top"
-    horizontal_alignment = "left"
 
-    [layout.caption.dividing_line]
-    length = 50
-    width = 0.5
-    color = "#002147"
-    spacing_before = 2
-    spacing_after = 2
+      [layout.caption.text.h1]
+      size = 10
+      weight = "bold"
+      color = "black"
+      linespacing = 1.2
+      spacing_before = 4
+      spacing_after = 6
+      vertical_alignment = "top"
+      horizontal_alignment = "left"
 
-    [layout.caption.branding_line]
-    length = 20
-    width = 4
-    color = "#002147"
-    spacing_before = 0
-    spacing_after = 6
+      [layout.caption.text.h2]
+      size = 8
+      weight = "bold"
+      color = "black"
+      linespacing = 1.2
+      spacing_before = 0
+      spacing_after = 0
+      vertical_alignment = "top"
+      horizontal_alignment = "left"
+      
+      [layout.caption.text.p]
+      size = 8
+      weight = "regular"
+      color = "black"
+      linespacing = 1.2
+      spacing_before = 0
+      spacing_after = 0
+      vertical_alignment = "top"
+      horizontal_alignment = "left"
+
+      [layout.caption.text.s]
+      size = 6
+      weight = "regular"
+      color = "grey"
+      linespacing = 1.2
+      spacing_before = 0
+      spacing_after = 0
+      vertical_alignment = "top"
+      horizontal_alignment = "left"
+
+    [layout.caption.line]
+
+      [layout.caption.line.dividing]
+      length = 50
+      width = 0.5
+      color = "#002147"
+      spacing_before = 2
+      spacing_after = 2
+
+      [layout.caption.line.branding]
+      length = 20
+      width = 4
+      color = "#002147"
+      spacing_before = 0
+      spacing_after = 6

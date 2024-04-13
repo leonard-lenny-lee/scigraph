@@ -51,6 +51,10 @@ SCHEMA = {
             "x_title": String,
             "y_title": String,
         },
+        "column": {
+            "x_title": String,
+            "y_title": String,
+        }
     },
     "layout": {
         "caption": {
@@ -61,11 +65,16 @@ SCHEMA = {
                 "right": Num,
                 "bottom": Num,
             },
-            "heading_one": TEXT_SCHEMA,
-            "heading_two": TEXT_SCHEMA,
-            "text": TEXT_SCHEMA,
-            "dividing_line": LINE_SCHEMA,
-            "branding_line": LINE_SCHEMA,
+            "text": {
+                "h1": TEXT_SCHEMA,
+                "h2": TEXT_SCHEMA,
+                "p": TEXT_SCHEMA,
+                "s": TEXT_SCHEMA,
+            },
+            "line": {
+                "dividing": LINE_SCHEMA,
+                "branding": LINE_SCHEMA,
+            }
         },
     },
 }

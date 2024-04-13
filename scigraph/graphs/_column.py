@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import override, Literal, Self, TYPE_CHECKING
+from typing import TYPE_CHECKING, Self, Literal, override
 
 import matplotlib.pyplot as plt
 
-from scigraph.datatables import XYTable
+from scigraph.datatables import ColumnTable
 from scigraph.graphs.abc import Graph
 from scigraph.graphs._components.points import Points
 from scigraph.graphs._components.errorbars import ErrorBars
@@ -15,12 +15,14 @@ if TYPE_CHECKING:
     from matplotlib.axes import Axes
 
 
-class XYGraph(Graph[XYTable]):
+class ColumnGraph(Graph[ColumnTable]):
 
     def __init__(
         self,
-        table: XYTable,
-        graph_t: Literal["mean", "geometric mean", "median", "individual"],
+        table: ColumnTable,
+        graph_t: Literal["mean", "geometric mean", "median", "individual",
+                         "scatter"],
+        direction: Literal["vertical", "horizontal"],
     ) -> None:
         super().__init__()
         # Components
@@ -30,20 +32,28 @@ class XYGraph(Graph[XYTable]):
 
         # Config
         self._graph_t = graph_t
-        self.xaxis = Axis()
-        self.yaxis = Axis()
-        self.secondary_yaxis = None
+        self._direction = direction
+        self._continuous_axis = Axis()
+        self._categorical_axis = Axis()  # TODO - categorical implementation
+        
+        if direction == "vertical":
+            self.xaxis = self._categorical_axis
+            self.yaxis = self._continuous_axis
+        elif direction == "horizontal":
+            self.xaxis = self._continuous_axis
+            self.yaxis = self._categorical_axis
+        else:
+            raise ValueError(f"Invalid direction arg")
 
         self.link_table(table)
 
     @override
-    def link_table(self, table: XYTable) -> None:
-        if not isinstance(table, XYTable):
-            # TODO - Maybe in the future accept other DataTables with adapters?
-            raise TypeError("Only XYTables can be linked to XYGraphs.")
+    def link_table(self, table: ColumnTable) -> None:
+        if not isinstance(table, ColumnTable):
+            raise TypeError("Only ColumnTables can be linked to ColumnGraphs.")
         self.table = table
-        self.xaxis.title = table.x_title
-        self.yaxis.title = table.y_title
+        self._categorical_axis.title = table.x_title
+        self._continuous_axis.title = table.y_title
 
     def add_points(self) -> Self:
         if (points := Points.from_str(self._graph_t)) is None:
@@ -77,13 +87,8 @@ class XYGraph(Graph[XYTable]):
         self._connecting_line = connecting_line
         return self
 
-    def add_area_fill(
-        self,
-    ) -> Self:
-        return self
-
     @override
-    def draw(self, ax: Axes | None = None) -> Axes:
+    def draw(self, ax: Axes | None) -> Axes:
         if ax is None:
             ax = plt.gca()
 
@@ -98,13 +103,13 @@ class XYGraph(Graph[XYTable]):
         ax.set_ylabel(self.yaxis.title)
 
         if self._points is not None:
-            self._points.draw_xy(self, ax)
+            self._points.draw_column(self, ax)
 
         if self._errorbars is not None:
-            self._errorbars.draw_xy(self, ax)
+            self._errorbars.draw_column(self, ax)
 
         if self._connecting_line is not None:
-            self._connecting_line.draw_xy(self, ax)
+            self._connecting_line.draw_column(self, ax)
 
         for analysis in self._linked_analyses:
             analysis.draw(self, ax)
