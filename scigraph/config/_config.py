@@ -43,21 +43,30 @@ class DefaultsConfiguration:
         # Return deepcopy to prevent unchecked mutation of internal configuration
         return deepcopy(out)
 
-    def set(self, key: str, val: Any) -> None:
+    def query_schema(self, key: str | None) -> Any:
+        if key is None:
+            return deepcopy(SCHEMA)
         keys = key.split(".")
+        out = SCHEMA
 
-        # Validate key and value before attempting to set value
-        cur = SCHEMA
         for k in keys:
-            if not isinstance(cur, dict) or k not in cur:
+            if not isinstance(out, dict) or k not in out:
                 raise KeyError(f"Invalid key: {key}")
-            cur = cur[k]
-        if not isinstance(cur, Param):
-            raise KeyError(f"Invalid key: {key}")
-        if not cur.validate(val):
+            out = out[k]
+
+        # Return deepcopy to prevent unchecked mutation of internal schema
+        return deepcopy(out)
+
+    def set(self, key: str, val: Any) -> None:
+        # Validate key and value before attempting to set value
+        query_result = self.query_schema(key)
+        if not isinstance(query_result, Param):
+            raise KeyError(f"Invalid key: {key}. Must be a parameter.")
+        if not query_result.validate(val):
             raise KeyError(f"Invalid value: {val}")
 
         # Set value
+        keys = key.split(".")
         target = self._config
         for k in keys[:-1]:
             target = target[k]

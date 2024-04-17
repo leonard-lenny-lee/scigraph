@@ -13,9 +13,12 @@ from numpy.typing import NDArray
 from pandas import DataFrame
 
 from scigraph.graphs.abc import Artist, TypeChecked
+from scigraph._options import (GraphType, XYGraphSubtype, ColumnGraphSubtype, 
+                               ColumnGraphDirection)
+import scigraph.analyses._agg as agg
 
 if TYPE_CHECKING:
-    from scigraph.graphs import XYGraph
+    from scigraph.graphs import XYGraph, ColumnGraph
 
 
 class ConnectingLine(Artist, TypeChecked, ABC):
@@ -44,11 +47,25 @@ class ConnectingLine(Artist, TypeChecked, ABC):
                               marker="", color=props.color, ls=props.linestyle)
             graph._add_legend_artist(id, artist)
 
-    @abstractmethod
-    def _prepare_xy(
+    @override
+    def draw_column(
         self,
-        graph: XYGraph,
-    ) -> DataFrame: ...
+        graph: ColumnGraph, 
+        ax: Axes,
+        *args,
+        **kwargs
+    ) -> None:
+        x = np.linspace(0, graph.table.ncols - 1, graph.table.ncols)
+        y = self._prepare_column(graph)
+        if graph._direction is ColumnGraphDirection.HORIZONTAL:
+            x, y = y, x
+        ax.plot(x, y, *args, **kwargs, marker="", color="k", ls="-")
+
+    @abstractmethod
+    def _prepare_xy(self, graph: XYGraph) -> DataFrame: ...
+
+    @abstractmethod
+    def _prepare_column(self, graph: ColumnGraph) -> NDArray: ...
 
     def _mask_nan(self, x: NDArray, y: NDArray) -> tuple[NDArray, NDArray]:
         assert x.shape == y.shape
@@ -70,46 +87,67 @@ class ConnectingLine(Artist, TypeChecked, ABC):
 class MeanConnectingLine(ConnectingLine):
 
     @override
-    def _prepare_xy(
-        self,
-        graph: XYGraph,
-    ) -> DataFrame:
-        return graph.table.summarize("mean")
+    def _prepare_xy(self, graph: XYGraph) -> DataFrame:
+        return graph.table._reduce_by_row_dataset_column(agg.Basic.mean)
+
+    @override
+    def _prepare_column(self, graph: ColumnGraph) -> NDArray:
+        return graph.table._reduce_by_column(agg.Basic.mean)
 
     @override
     @classmethod
-    def _compatible_types(cls) -> set[str]:
-        return {"mean", "individual"}
+    def _compatible_types(cls) -> set[TypeChecked.Type]:
+        return {
+            TypeChecked.Type(GraphType.XY, XYGraphSubtype.MEAN),
+            TypeChecked.Type(GraphType.XY, XYGraphSubtype.INDIVIDUAL),
+            TypeChecked.Type(GraphType.COLUMN, ColumnGraphSubtype.MEAN),
+            TypeChecked.Type(GraphType.COLUMN, ColumnGraphSubtype.INDIVIDUAL),
+        }
 
 
 class GeometricMeanConnectingLine(ConnectingLine):
 
     @override
-    def _prepare_xy(
-        self,
-        graph: XYGraph,
-    ) -> DataFrame:
-        return graph.table.summarize("geometric mean")
+    def _prepare_xy(self, graph: XYGraph) -> DataFrame:
+        return graph.table._reduce_by_row_dataset_column(
+            agg.Advanced.geometric_mean
+        )
+
+    @override
+    def _prepare_column(self, graph: ColumnGraph) -> NDArray:
+        return graph.table._reduce_by_column(agg.Advanced.geometric_mean)
 
     @override
     @classmethod
-    def _compatible_types(cls) -> set[str]:
-        return {"geometric mean", "individual"}
+    def _compatible_types(cls) -> set[TypeChecked.Type]:
+        return {
+            TypeChecked.Type(GraphType.XY, XYGraphSubtype.GEOMETRIC_MEAN),
+            TypeChecked.Type(GraphType.XY, XYGraphSubtype.INDIVIDUAL),
+            TypeChecked.Type(
+                GraphType.COLUMN, ColumnGraphSubtype.GEOMETRIC_MEAN
+            ),
+            TypeChecked.Type(GraphType.COLUMN, ColumnGraphSubtype.INDIVIDUAL),
+        }
 
 
 class MedianConnectingLine(ConnectingLine):
 
     @override
-    def _prepare_xy(
-        self,
-        graph: XYGraph,
-    ) -> DataFrame:
-        return graph.table.summarize("median")
+    def _prepare_xy(self, graph: XYGraph) -> DataFrame:
+        return graph.table._reduce_by_row_dataset_column(agg.Basic.median)
 
     @override
+    def _prepare_column(self, graph: ColumnGraph) -> NDArray:
+        return graph.table._reduce_by_column(agg.Basic.median)
+
     @classmethod
-    def _compatible_types(cls) -> set[str]:
-        return {"median", "individual"}
+    def _compatible_types(cls) -> set[TypeChecked.Type]:
+        return {
+            TypeChecked.Type(GraphType.XY, XYGraphSubtype.MEDIAN),
+            TypeChecked.Type(GraphType.XY, XYGraphSubtype.INDIVIDUAL),
+            TypeChecked.Type(GraphType.COLUMN, ColumnGraphSubtype.MEDIAN),
+            TypeChecked.Type(GraphType.COLUMN, ColumnGraphSubtype.INDIVIDUAL),
+        }
 
 
 class IndividualConnectingLine(ConnectingLine):
@@ -133,28 +171,46 @@ class IndividualConnectingLine(ConnectingLine):
                 else:
                     x_ = x
                 ax.plot(x_, y, *args, **kwargs,
-                                  marker="", color=props.color, ls=props.linestyle)
+                        marker="", color=props.color, ls=props.linestyle)
             artist = Line2D([], [],
                             marker="", color=props.color, ls=props.linestyle)
             graph._add_legend_artist(id, artist)
 
+    @override
+    def draw_column(
+        self,
+        graph: ColumnGraph, 
+        ax: Axes,
+        *args,
+        **kwargs
+    ) -> None:
+        x = np.linspace(0, graph.table.ncols - 1, graph.table.ncols)
+        for y in graph.table.values:
+            x_ = x
+            if graph._direction is ColumnGraphDirection.HORIZONTAL:
+                x_, y = y, x_
+            ax.plot(x_, y, *args, **kwargs, marker="", color="k", ls="-")
 
     @override
-    def _prepare_xy(
-        self,
-        graph: XYGraph,
-    ) -> DataFrame:
+    def _prepare_xy(self, graph: XYGraph) -> DataFrame:
+        raise NotImplementedError
+
+    @override
+    def _prepare_column(self, graph: ColumnGraph) -> NDArray:
         raise NotImplementedError
 
     @override
     @classmethod
-    def _compatible_types(cls) -> set[str]:
-        return {"individual"}
+    def _compatible_types(cls) -> set[TypeChecked.Type]:
+        return {
+            TypeChecked.Type(GraphType.XY, XYGraphSubtype.INDIVIDUAL),
+            TypeChecked.Type(GraphType.COLUMN, ColumnGraphSubtype.INDIVIDUAL),
+        }
 
 
 _FACTORY_MAP = {
     "mean": MeanConnectingLine,
     "geometric mean": GeometricMeanConnectingLine,
-    "median": MeanConnectingLine,
+    "median": MedianConnectingLine,
     "individual": IndividualConnectingLine,
 }

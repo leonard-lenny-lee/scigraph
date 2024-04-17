@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 import logging
-from typing import Literal, override
+from typing import Literal, override, TYPE_CHECKING
 
 from matplotlib.axes import Axes
 import numpy as np
@@ -9,11 +11,13 @@ from pandas import DataFrame, Index
 from scipy.optimize import curve_fit
 
 from .abc import GraphableAnalysis
-from scigraph.datatables import XYTable
-from scigraph.graphs import XYGraph
+
+if TYPE_CHECKING:
+    from scigraph.datatables import XYTable
+    from scigraph.graphs import XYGraph
 
 
-class CurveFit(GraphableAnalysis[XYTable, XYGraph], ABC):
+class CurveFit(GraphableAnalysis, ABC):
 
     def __init__(
         self,

@@ -26,14 +26,9 @@ def set_log10_format(axis: Axis) -> None:
     axis.set_major_formatter(formatter)
 
 
-LOG10_TICK_FORMATTERS: dict[str, Callable[[Axis], None]] = {
-    "antilog": set_antilog_format,
-    "power10": set_power10_format,
-    "log10": set_log10_format,
-}
-
-LINEAR_TICK_FORMATTERS: dict[str, Callable[[Axis], None]] = {
+TICK_FORMATTERS: dict[str, Callable[[Axis], None]] = {
     "decimal": set_decimal_format,
     "antilog": set_antilog_format,
     "power10": set_power10_format,
+    "log10": set_log10_format,
 }

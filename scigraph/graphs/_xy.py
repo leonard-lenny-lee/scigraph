@@ -5,11 +5,12 @@ from typing import override, Literal, Self, TYPE_CHECKING
 import matplotlib.pyplot as plt
 
 from scigraph.datatables import XYTable
-from scigraph.graphs.abc import Graph
+from scigraph.graphs.abc import Graph, TypeChecked
 from scigraph.graphs._components.points import Points
 from scigraph.graphs._components.errorbars import ErrorBars
 from scigraph.graphs._components.connecting_lines import ConnectingLine
-from scigraph.graphs._components.axis import Axis
+from scigraph.graphs._components.axis import ContinuousAxis
+from scigraph._options import GraphType, XYGraphSubtype
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
@@ -20,7 +21,8 @@ class XYGraph(Graph[XYTable]):
     def __init__(
         self,
         table: XYTable,
-        graph_t: Literal["mean", "geometric mean", "median", "individual"],
+        subtype: Literal["mean", "geometric mean", "median",
+                         "individual"] | XYGraphSubtype,
     ) -> None:
         super().__init__()
         # Components
@@ -29,9 +31,9 @@ class XYGraph(Graph[XYTable]):
         self._errorbars: ErrorBars | None = None
 
         # Config
-        self._graph_t = graph_t
-        self.xaxis = Axis()
-        self.yaxis = Axis()
+        self._subtype = XYGraphSubtype.from_str(subtype)
+        self.xaxis = ContinuousAxis("x")
+        self.yaxis = ContinuousAxis("y")
         self.secondary_yaxis = None
 
         self.link_table(table)
@@ -46,7 +48,7 @@ class XYGraph(Graph[XYTable]):
         self.yaxis.title = table.y_title
 
     def add_points(self) -> Self:
-        if (points := Points.from_str(self._graph_t)) is None:
+        if (points := Points.from_str(self._subtype.to_str())) is None:
             raise ValueError("Invalid plot argument.")
 
         self._check_component_compatibility(points)
@@ -89,13 +91,8 @@ class XYGraph(Graph[XYTable]):
 
         self._compile_plot_properties()
 
-        ax.set_xscale(self.xaxis._props.mpl_arg)
-        ax.set_yscale(self.yaxis._props.mpl_arg)
-        self.xaxis.format_axis(ax.xaxis)
-        self.yaxis.format_axis(ax.yaxis)
-
-        ax.set_xlabel(self.xaxis.title)
-        ax.set_ylabel(self.yaxis.title)
+        self.xaxis._format_axes(ax)
+        self.yaxis._format_axes(ax)
 
         if self._points is not None:
             self._points.draw_xy(self, ax)
@@ -116,5 +113,5 @@ class XYGraph(Graph[XYTable]):
 
     @property
     @override
-    def _checkcode(self) -> str:
-        return self._graph_t
+    def _checkcode(self) -> TypeChecked.Type:
+        return TypeChecked.Type(GraphType.XY, self._subtype)

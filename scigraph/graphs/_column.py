@@ -1,15 +1,20 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Self, Literal, override
+from typing import TYPE_CHECKING, Optional, Self, Literal, override
 
 import matplotlib.pyplot as plt
 
 from scigraph.datatables import ColumnTable
-from scigraph.graphs.abc import Graph
+from scigraph.graphs.abc import Graph, TypeChecked
 from scigraph.graphs._components.points import Points
 from scigraph.graphs._components.errorbars import ErrorBars
 from scigraph.graphs._components.connecting_lines import ConnectingLine
-from scigraph.graphs._components.axis import Axis
+from scigraph.graphs._components.axis import ContinuousAxis, CategoricalAxis
+from scigraph._options import (
+    GraphType,
+    ColumnGraphDirection,
+    ColumnGraphSubtype
+)
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
@@ -20,9 +25,9 @@ class ColumnGraph(Graph[ColumnTable]):
     def __init__(
         self,
         table: ColumnTable,
-        graph_t: Literal["mean", "geometric mean", "median", "individual",
-                         "scatter"],
-        direction: Literal["vertical", "horizontal"],
+        subtype: Literal["mean", "geometric mean", "median", "individual",
+                         "swarm"] | ColumnGraphSubtype,
+        direction: Literal["vertical", "horizontal"] | ColumnGraphDirection,
     ) -> None:
         super().__init__()
         # Components
@@ -31,32 +36,33 @@ class ColumnGraph(Graph[ColumnTable]):
         self._errorbars: ErrorBars | None = None
 
         # Config
-        self._graph_t = graph_t
-        self._direction = direction
-        self._continuous_axis = Axis()
-        self._categorical_axis = Axis()  # TODO - categorical implementation
-        
-        if direction == "vertical":
-            self.xaxis = self._categorical_axis
-            self.yaxis = self._continuous_axis
-        elif direction == "horizontal":
-            self.xaxis = self._continuous_axis
-            self.yaxis = self._categorical_axis
-        else:
-            raise ValueError(f"Invalid direction arg")
-
+        self._subtype = ColumnGraphSubtype.from_str(subtype)
+        self._direction = ColumnGraphDirection.from_str(direction)
+        self._init_axis(table.dataset_ids)
         self.link_table(table)
+
+    def _init_axis(self, dataset_ids: list[str]) -> None:
+        if self._direction is ColumnGraphDirection.VERTICAL:
+            self.xaxis = self.categorical_axis = CategoricalAxis(
+                "x", dataset_ids
+            )
+            self.yaxis = self.continuous_axis = ContinuousAxis("y")
+        else:  # Horizontal
+            self.xaxis = self.continuous_axis = ContinuousAxis("x")
+            self.yaxis = self.categorical_axis = CategoricalAxis(
+                "y", dataset_ids
+            )
 
     @override
     def link_table(self, table: ColumnTable) -> None:
         if not isinstance(table, ColumnTable):
             raise TypeError("Only ColumnTables can be linked to ColumnGraphs.")
         self.table = table
-        self._categorical_axis.title = table.x_title
-        self._continuous_axis.title = table.y_title
+        self.categorical_axis.title = table.x_title
+        self.continuous_axis.title = table.y_title
 
     def add_points(self) -> Self:
-        if (points := Points.from_str(self._graph_t)) is None:
+        if (points := Points.from_str(self._subtype.to_str())) is None:
             raise ValueError("Invalid plot argument.")
 
         self._check_component_compatibility(points)
@@ -88,19 +94,14 @@ class ColumnGraph(Graph[ColumnTable]):
         return self
 
     @override
-    def draw(self, ax: Axes | None) -> Axes:
+    def draw(self, ax: Optional[Axes] = None) -> Axes:
         if ax is None:
             ax = plt.gca()
 
         self._compile_plot_properties()
 
-        ax.set_xscale(self.xaxis._props.mpl_arg)
-        ax.set_yscale(self.yaxis._props.mpl_arg)
-        self.xaxis.format_axis(ax.xaxis)
-        self.yaxis.format_axis(ax.yaxis)
-
-        ax.set_xlabel(self.xaxis.title)
-        ax.set_ylabel(self.yaxis.title)
+        self.xaxis._format_axes(ax)
+        self.yaxis._format_axes(ax)
 
         if self._points is not None:
             self._points.draw_column(self, ax)
@@ -121,5 +122,5 @@ class ColumnGraph(Graph[ColumnTable]):
 
     @property
     @override
-    def _checkcode(self) -> str:
-        return self._graph_t
+    def _checkcode(self) -> TypeChecked.Type:
+       return TypeChecked.Type(GraphType.COLUMN, self._subtype)

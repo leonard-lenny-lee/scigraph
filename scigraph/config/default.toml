@@ -9,6 +9,16 @@
   y_title = "Y"
 
 
+[graphs]
+
+  [graphs.axis]
+
+    [graphs.axis.continuous]
+    scale = "linear"
+    format.linear = "decimal"
+    format.log10 = "power10"
+
+
 [layout]
 
   [layout.caption]

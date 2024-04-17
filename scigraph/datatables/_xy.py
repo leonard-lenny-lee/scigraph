@@ -157,3 +157,9 @@ class XYTable(DataTable):
         self._dataset_index_map: dict[str, int] = dict(
             zip(self._dataset_names, range(self._n_datasets))
         )
+
+    def _reduce_by_row_dataset_column(self, f) -> DataFrame:
+        out = self.as_df().T.groupby(level=0).agg(f)
+        # Transform shape back into original
+        cols = self._columns().unique(level=0)
+        return out.T.reindex(columns=cols)

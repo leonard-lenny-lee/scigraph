@@ -24,7 +24,9 @@ Int = Param(int, None)
 Float = Param(float, None)
 Num = Param((int, float), None)
 
-TEXT_SCHEMA = {
+type Schema = dict[str, Param | Schema]
+
+TEXT_SCHEMA: Schema = {
     "size": Num,
     "weight": Param((int, float, str), None),
     "color": String,
@@ -37,7 +39,7 @@ TEXT_SCHEMA = {
     "horizontal_alignment": Param(str, {"left", "right", "center"}),
 }
 
-LINE_SCHEMA = {
+LINE_SCHEMA: Schema = {
     "length": Num,
     "width": Num,
     "color": String,
@@ -45,7 +47,7 @@ LINE_SCHEMA = {
     "spacing_after": Num,
 }
 
-SCHEMA = {
+SCHEMA: Schema = {
     "datatables": {
         "xy": {
             "x_title": String,
@@ -56,6 +58,18 @@ SCHEMA = {
             "y_title": String,
         }
     },
+    "graphs": {
+        "axis": {
+            "continuous": {
+                "scale": Param(str, {"linear", "log10"}),
+                "format": {
+                    "linear": Param(str, {"decimal", "power10", "antilog"}),
+                    "log10": Param(str, {"log10", "power10", "antilog"})
+                }
+            }
+        }
+    }
+    ,
     "layout": {
         "caption": {
             "direction": Param(str, {"down", "up"}),

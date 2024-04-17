@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import override
+from typing import Callable, override
 
+import numpy as np
 from numpy.typing import NDArray
 from pandas import DataFrame, Index
 
@@ -68,3 +69,6 @@ class ColumnTable(DataTable):
             raise ValueError("Inappropriate number of names provided")
 
         self._dataset_names = names
+
+    def _reduce_by_column(self, f: Callable[..., float]) -> NDArray:
+        return np.apply_along_axis(f, axis=0, arr=self._values)

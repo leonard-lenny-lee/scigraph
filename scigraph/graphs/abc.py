@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Self, TYPE_CHECKING
+from typing import Any, Self, NamedTuple, TYPE_CHECKING
 
 from scigraph.analyses.abc import GraphableAnalysis
 from scigraph.styles._plot_properties import (
@@ -11,8 +11,10 @@ from scigraph.styles._plot_properties import (
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
+
     from scigraph.datatables.abc import DataTable
     from scigraph.graphs import XYGraph, ColumnGraph
+    from scigraph._options import Option, GraphType
 
 
 class Graph[T: DataTable](ABC):
@@ -42,7 +44,7 @@ class Graph[T: DataTable](ABC):
 
     @property
     @abstractmethod
-    def _checkcode(self) -> str:
+    def _checkcode(self) -> TypeChecked.Type:
         """Identifier for Component Compatibility Checking"""
 
     def _check_component_compatibility(
@@ -84,13 +86,17 @@ class Graph[T: DataTable](ABC):
 
 class TypeChecked(ABC):
 
+    class Type(NamedTuple):
+        graph_t: GraphType 
+        subtype: Option | None
+
     @classmethod
     def check_compatible(cls, other: Self) -> bool:
         return len(cls._compatible_types() & other._compatible_types()) > 0
 
     @classmethod
     @abstractmethod
-    def _compatible_types(cls) -> set[str]: ...
+    def _compatible_types(cls) -> set[TypeChecked.Type]: ...
 
 
 class Artist(ABC):
