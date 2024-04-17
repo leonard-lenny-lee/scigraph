@@ -53,4 +53,11 @@ class ColumnGraphSubtype(Option):
     GEOMETRIC_MEAN = 1
     MEDIAN = 2
     INDIVIDUAL = 3
-    SCATTER = 4
+    SWARM = 4
+
+
+class BarType(Option):
+
+    MEAN = 0
+    GEOMETRIC_MEAN = 1
+    MEDIAN = 2

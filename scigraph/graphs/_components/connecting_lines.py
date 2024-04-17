@@ -4,7 +4,7 @@ Artists that connect average of replicates together, or individual replicates
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Self, override, TYPE_CHECKING
+from typing import Never, Self, override, TYPE_CHECKING
 
 from matplotlib.axes import Axes
 from matplotlib.lines import Line2D
@@ -13,8 +13,12 @@ from numpy.typing import NDArray
 from pandas import DataFrame
 
 from scigraph.graphs.abc import Artist, TypeChecked
-from scigraph._options import (GraphType, XYGraphSubtype, ColumnGraphSubtype, 
-                               ColumnGraphDirection)
+from scigraph._options import (
+    GraphType,
+    XYGraphSubtype,
+    ColumnGraphSubtype, 
+    ColumnGraphDirection
+)
 import scigraph.analyses._agg as agg
 
 if TYPE_CHECKING:
@@ -192,11 +196,11 @@ class IndividualConnectingLine(ConnectingLine):
             ax.plot(x_, y, *args, **kwargs, marker="", color="k", ls="-")
 
     @override
-    def _prepare_xy(self, graph: XYGraph) -> DataFrame:
+    def _prepare_xy(self, graph: XYGraph) -> Never:
         raise NotImplementedError
 
     @override
-    def _prepare_column(self, graph: ColumnGraph) -> NDArray:
+    def _prepare_column(self, graph: ColumnGraph) -> Never:
         raise NotImplementedError
 
     @override

@@ -9,8 +9,12 @@ from pandas import DataFrame
 from matplotlib.axes import Axes
 
 from scigraph.graphs.abc import Artist, TypeChecked
-from scigraph._options import (GraphType, XYGraphSubtype, ColumnGraphSubtype,
-                               ColumnGraphDirection)
+from scigraph._options import (
+    GraphType,
+    XYGraphSubtype, 
+    ColumnGraphSubtype,
+    ColumnGraphDirection
+)
 import scigraph.analyses._agg as agg
 
 if TYPE_CHECKING:
@@ -91,7 +95,9 @@ class SDErrorBars(ErrorBars):
     def _compatible_types(cls) -> set[TypeChecked.Type]:
         return {
             TypeChecked.Type(GraphType.XY, XYGraphSubtype.MEAN),
-            TypeChecked.Type(GraphType.COLUMN, ColumnGraphSubtype.MEAN)
+            TypeChecked.Type(GraphType.COLUMN, ColumnGraphSubtype.MEAN),
+            TypeChecked.Type(GraphType.COLUMN, ColumnGraphSubtype.INDIVIDUAL),
+            TypeChecked.Type(GraphType.COLUMN, ColumnGraphSubtype.SWARM)
         }
 
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import override, TYPE_CHECKING
+from typing import Never, override, TYPE_CHECKING
 import logging
 
 from matplotlib.axes import Axes
@@ -10,8 +10,12 @@ from numpy.typing import NDArray
 from pandas import DataFrame
 
 from ..abc import TypeChecked, Artist
-from scigraph._options import (GraphType, XYGraphSubtype, ColumnGraphSubtype,
-                               ColumnGraphDirection)
+from scigraph._options import (
+    GraphType,
+    XYGraphSubtype,
+    ColumnGraphSubtype,
+    ColumnGraphDirection
+)
 import scigraph.analyses._agg as agg
 
 if TYPE_CHECKING:
@@ -167,11 +171,11 @@ class IndividualPoints(Points):
         ax.plot(x, y, *args, **kwargs, marker="o", color="k", ls="")
 
     @override
-    def _prepare_xy(self, graph: XYGraph) -> DataFrame:
+    def _prepare_xy(self, graph: XYGraph) -> Never:
         raise NotImplementedError
 
     @override
-    def _prepare_column(self, graph: ColumnGraph) -> NDArray:
+    def _prepare_column(self, graph: ColumnGraph) -> Never:
         raise NotImplementedError
 
     @override

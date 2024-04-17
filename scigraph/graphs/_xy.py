@@ -47,8 +47,11 @@ class XYGraph(Graph[XYTable]):
         self.xaxis.title = table.x_title
         self.yaxis.title = table.y_title
 
-    def add_points(self) -> Self:
-        if (points := Points.from_str(self._subtype.to_str())) is None:
+    def add_points(
+        self,
+        ty: Literal["mean", "geometric mean", "median", "individual"],
+    ) -> Self:
+        if (points := Points.from_str(ty)) is None:
             raise ValueError("Invalid plot argument.")
 
         self._check_component_compatibility(points)

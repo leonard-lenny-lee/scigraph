@@ -121,9 +121,11 @@ class CategoricalAxis(SGAxis):
         if self._axis is self._Axis.X:
             axis = ax.xaxis
             ax.set_xlim(*lims)
+            ax.set_xlabel(self.title)
         else:  # Y Axis
             axis = ax.yaxis
             ax.set_ylim(*lims)
+            ax.set_ylabel(self.title)
 
         axis.set_ticks(ticks, self._categories)
 
