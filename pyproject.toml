@@ -19,4 +19,5 @@ dependencies = [
   "pandas >= 2.2",
   "matplotlib >= 3.8.3",
   "scipy >= 1.12",
+  "seaborn >= 1.13",
 ]

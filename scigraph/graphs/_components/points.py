@@ -8,6 +8,7 @@ from matplotlib.axes import Axes
 import numpy as np
 from numpy.typing import NDArray
 from pandas import DataFrame
+import seaborn as sns
 
 from scigraph.graphs.abc import GraphComponent
 from scigraph._options import ColumnGraphDirection, PointsType
@@ -150,7 +151,39 @@ class IndividualPoints(Points):
         raise NotImplementedError
 
 
-class SwarmPoints(Points): ...  # TODO
+class SwarmPoints(Points):
+
+    @override
+    def draw_column(
+        self,
+        graph: ColumnGraph,
+        ax: Axes,
+        *args,
+        **kwargs
+    ) -> None:
+        x = np.linspace(0, graph.table.ncols - 1, graph.table.ncols)
+        x = np.repeat(x, graph.table.nrows)
+        y = graph.table.values.flatten('F')
+        # Use seaborn for swarm
+        if graph._direction is ColumnGraphDirection.HORIZONTAL:
+            orient = "h"
+            x, y = y, x
+        else:
+            orient = "v"
+        sns.swarmplot(x=x, y=y, orient=orient, legend=False, ax=ax, color="k",
+                      size=3, *args, **kwargs)
+
+    @override
+    def draw_xy(self, *args, **kwargs) -> Never:
+        raise NotImplementedError
+
+    @override
+    def _prepare_xy(self, _) -> Never:
+        raise NotImplementedError
+
+    @override
+    def _prepare_column(self, _) -> Never:
+        raise NotImplementedError
 
 
 _FACTORY_MAP: dict[PointsType, type[Points]] = {
