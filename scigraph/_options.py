@@ -61,3 +61,6 @@ class BarType(Option):
     MEAN = 0
     GEOMETRIC_MEAN = 1
     MEDIAN = 2
+
+
+LineType = BarType

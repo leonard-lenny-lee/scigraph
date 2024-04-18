@@ -99,6 +99,16 @@ class ColumnGraph(Graph[ColumnTable]):
         self._artists.append(bar)
         return self
 
+    def add_lines(
+        self,
+        ty: Literal["mean", "median", "geometric mean"] | sgopt.LineType,
+    ) -> Self:
+        line_t = sgopt.LineType.from_str(ty)
+        line = Bars.from_opt(line_t, line_only=True)
+        self._check_component_compatibility(line)
+        self._artists.append(line)
+        return self
+
     @override
     def draw(self, ax: Optional[Axes] = None) -> Axes:
         if ax is None:

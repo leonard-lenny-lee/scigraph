@@ -23,6 +23,9 @@ if TYPE_CHECKING:
 
 class Bars(Artist, TypeChecked):
     
+    def __init__(self, line_only: bool = False) -> None:
+        self.line_only = line_only
+
     @override
     def draw_xy(self, *args, **kwargs) -> Never:
         raise NotImplementedError
@@ -33,21 +36,27 @@ class Bars(Artist, TypeChecked):
         graph: ColumnGraph,
         ax: Axes,
         *args,
-        **kwargs
+        **kwargs,
     ) -> None:
         x = np.linspace(0, graph.table.ncols - 1, graph.table.ncols)
         y = self._prepare_column(graph)
-        if graph._direction is ColumnGraphDirection.VERTICAL:
-            ax.bar(x, y, *args, **kwargs)
-        else:  # Horizontal
-            ax.barh(x, y, *args, **kwargs)
+        if self.line_only:
+            if graph._direction is ColumnGraphDirection.VERTICAL:
+                ax.bar(x, y, *args, **kwargs)
+            else:  # Horizontal
+                ax.barh(x, y, *args, **kwargs)
+        else:  # Draw full bars
+            if graph._direction is ColumnGraphDirection.VERTICAL:
+                ax.hlines(y, x - 0.25, x + 0.25, *args, **kwargs)
+            else:  # Horizontal
+                ax.vlines(y, x - 0.25, x + 0.25, *args, **kwargs)
 
     @abstractmethod
     def _prepare_column(self, graph: ColumnGraph) -> NDArray: ...
 
     @classmethod
-    def from_opt(cls, opt: BarType) -> Self:
-        return _FACTORY_MAP[opt]()
+    def from_opt(cls, opt: BarType, *args, **kwargs) -> Self:
+        return _FACTORY_MAP[opt](*args, **kwargs)
 
 
 class MeanBars(Bars):
