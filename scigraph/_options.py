@@ -2,12 +2,6 @@ from enum import Enum
 from typing import Self
 
 
-class GraphType(Enum):
-
-    XY = 0
-    COLUMN = 1
-
-
 class Option(Enum):
     """Options which are parsed from user provided string literal arguments."""
 
@@ -33,34 +27,43 @@ class Option(Enum):
             )
 
 
-class XYGraphSubtype(Option):
-
-    MEAN = 0
-    GEOMETRIC_MEAN = 1
-    MEDIAN = 2
-    INDIVIDUAL = 3
-
+# fmt: off
+## Graph Configuration
 
 class ColumnGraphDirection(Option):
-    
-    HORIZONTAL = 0
-    VERTICAL = 1
+    HORIZONTAL     = 0
+    VERTICAL       = 1
 
 
-class ColumnGraphSubtype(Option):
+## Graph Components ##
 
-    MEAN = 0
+class PointsType(Option):
+    MEAN           = 0
     GEOMETRIC_MEAN = 1
-    MEDIAN = 2
-    INDIVIDUAL = 3
-    SWARM = 4
+    MEDIAN         = 2
+    INDIVIDUAL     = 3
+    SWARM          = 4
+
+
+class ErrorbarType(Option):
+    SD             = 0
+    GEOMETRIC_SD   = 1
+    SEM            = 2
+    CI95           = 3
+    RANGE          = 4
+
+
+class ConnectingLineType(Option):
+    MEAN           = 0
+    GEOMETRIC_MEAN = 1
+    MEDIAN         = 2
+    INDIVIDUAL     = 3
 
 
 class BarType(Option):
-
-    MEAN = 0
+    MEAN           = 0
     GEOMETRIC_MEAN = 1
-    MEDIAN = 2
+    MEDIAN         = 2
 
-
+# fmt: on
 LineType = BarType

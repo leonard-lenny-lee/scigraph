@@ -12,20 +12,15 @@ import numpy as np
 from numpy.typing import NDArray
 from pandas import DataFrame
 
-from scigraph.graphs.abc import Artist, TypeChecked
-from scigraph._options import (
-    GraphType,
-    XYGraphSubtype,
-    ColumnGraphSubtype, 
-    ColumnGraphDirection
-)
+from scigraph.graphs.abc import GraphComponent
+from scigraph._options import ColumnGraphDirection, ConnectingLineType
 import scigraph.analyses._agg as agg
 
 if TYPE_CHECKING:
     from scigraph.graphs import XYGraph, ColumnGraph
 
 
-class ConnectingLine(Artist, TypeChecked, ABC):
+class ConnectingLine(GraphComponent, ABC):
 
     def __init__(self, join_nan: bool) -> None:
         self.join_nan = join_nan
@@ -66,10 +61,10 @@ class ConnectingLine(Artist, TypeChecked, ABC):
         ax.plot(x, y, *args, **kwargs, marker="", color="k", ls="-")
 
     @abstractmethod
-    def _prepare_xy(self, graph: XYGraph) -> DataFrame: ...
+    def _prepare_xy(self, graph: XYGraph, /) -> DataFrame: ...
 
     @abstractmethod
-    def _prepare_column(self, graph: ColumnGraph) -> NDArray: ...
+    def _prepare_column(self, graph: ColumnGraph, /) -> NDArray: ...
 
     def _mask_nan(self, x: NDArray, y: NDArray) -> tuple[NDArray, NDArray]:
         assert x.shape == y.shape
@@ -82,10 +77,8 @@ class ConnectingLine(Artist, TypeChecked, ABC):
         return masked_array[0], masked_array[1]
 
     @classmethod
-    def from_str(cls, s: str, *args, **kwargs) -> Self | None:
-        if s in _FACTORY_MAP:
-            return _FACTORY_MAP[s](*args, **kwargs)
-        return None
+    def from_opt(cls, opt: ConnectingLineType, **kwargs) -> Self:
+        return _FACTORY_MAP[opt](**kwargs)
 
 
 class MeanConnectingLine(ConnectingLine):
@@ -97,16 +90,6 @@ class MeanConnectingLine(ConnectingLine):
     @override
     def _prepare_column(self, graph: ColumnGraph) -> NDArray:
         return graph.table._reduce_by_column(agg.Basic.mean)
-
-    @override
-    @classmethod
-    def _compatible_types(cls) -> set[TypeChecked.Type]:
-        return {
-            TypeChecked.Type(GraphType.XY, XYGraphSubtype.MEAN),
-            TypeChecked.Type(GraphType.XY, XYGraphSubtype.INDIVIDUAL),
-            TypeChecked.Type(GraphType.COLUMN, ColumnGraphSubtype.MEAN),
-            TypeChecked.Type(GraphType.COLUMN, ColumnGraphSubtype.INDIVIDUAL),
-        }
 
 
 class GeometricMeanConnectingLine(ConnectingLine):
@@ -121,18 +104,6 @@ class GeometricMeanConnectingLine(ConnectingLine):
     def _prepare_column(self, graph: ColumnGraph) -> NDArray:
         return graph.table._reduce_by_column(agg.Advanced.geometric_mean)
 
-    @override
-    @classmethod
-    def _compatible_types(cls) -> set[TypeChecked.Type]:
-        return {
-            TypeChecked.Type(GraphType.XY, XYGraphSubtype.GEOMETRIC_MEAN),
-            TypeChecked.Type(GraphType.XY, XYGraphSubtype.INDIVIDUAL),
-            TypeChecked.Type(
-                GraphType.COLUMN, ColumnGraphSubtype.GEOMETRIC_MEAN
-            ),
-            TypeChecked.Type(GraphType.COLUMN, ColumnGraphSubtype.INDIVIDUAL),
-        }
-
 
 class MedianConnectingLine(ConnectingLine):
 
@@ -143,15 +114,6 @@ class MedianConnectingLine(ConnectingLine):
     @override
     def _prepare_column(self, graph: ColumnGraph) -> NDArray:
         return graph.table._reduce_by_column(agg.Basic.median)
-
-    @classmethod
-    def _compatible_types(cls) -> set[TypeChecked.Type]:
-        return {
-            TypeChecked.Type(GraphType.XY, XYGraphSubtype.MEDIAN),
-            TypeChecked.Type(GraphType.XY, XYGraphSubtype.INDIVIDUAL),
-            TypeChecked.Type(GraphType.COLUMN, ColumnGraphSubtype.MEDIAN),
-            TypeChecked.Type(GraphType.COLUMN, ColumnGraphSubtype.INDIVIDUAL),
-        }
 
 
 class IndividualConnectingLine(ConnectingLine):
@@ -196,25 +158,17 @@ class IndividualConnectingLine(ConnectingLine):
             ax.plot(x_, y, *args, **kwargs, marker="", color="k", ls="-")
 
     @override
-    def _prepare_xy(self, graph: XYGraph) -> Never:
+    def _prepare_xy(self, _) -> Never:
         raise NotImplementedError
 
     @override
-    def _prepare_column(self, graph: ColumnGraph) -> Never:
+    def _prepare_column(self, _) -> Never:
         raise NotImplementedError
-
-    @override
-    @classmethod
-    def _compatible_types(cls) -> set[TypeChecked.Type]:
-        return {
-            TypeChecked.Type(GraphType.XY, XYGraphSubtype.INDIVIDUAL),
-            TypeChecked.Type(GraphType.COLUMN, ColumnGraphSubtype.INDIVIDUAL),
-        }
 
 
 _FACTORY_MAP = {
-    "mean": MeanConnectingLine,
-    "geometric mean": GeometricMeanConnectingLine,
-    "median": MedianConnectingLine,
-    "individual": IndividualConnectingLine,
+    ConnectingLineType.MEAN: MeanConnectingLine,
+    ConnectingLineType.GEOMETRIC_MEAN: GeometricMeanConnectingLine,
+    ConnectingLineType.MEDIAN: MedianConnectingLine,
+    ConnectingLineType.INDIVIDUAL: IndividualConnectingLine,
 }

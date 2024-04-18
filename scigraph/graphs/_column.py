@@ -5,15 +5,16 @@ from typing import TYPE_CHECKING, Optional, Self, Literal, override
 import matplotlib.pyplot as plt
 
 from scigraph.datatables import ColumnTable
-from scigraph.graphs.abc import Graph, TypeChecked
+from scigraph.graphs.abc import Graph
 from scigraph.graphs._components import Points, ErrorBars, ConnectingLine, Bars
 from scigraph.graphs._components.axis import ContinuousAxis, CategoricalAxis
-import scigraph._options as sgopt
+from scigraph._options import (
+    ColumnGraphDirection, PointsType, ConnectingLineType, ErrorbarType,
+    BarType, LineType
+)
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
-
-    from scigraph.graphs.abc import Artist
 
 
 class ColumnGraph(Graph[ColumnTable]):
@@ -21,36 +22,30 @@ class ColumnGraph(Graph[ColumnTable]):
     def __init__(
         self,
         table: ColumnTable,
-        subtype: Literal["mean", "geometric mean", "median", "individual",
-                         "swarm"] | sgopt.ColumnGraphSubtype,
-        direction: Literal["vertical", "horizontal"] | sgopt.ColumnGraphDirection,
+        direction: Literal["vertical", "horizontal"],
     ) -> None:
         super().__init__()
-        self._artists: list[Artist] = []
 
-        # Config
-        self._subtype = sgopt.ColumnGraphSubtype.from_str(subtype)
-        self._direction = sgopt.ColumnGraphDirection.from_str(direction)
+        self._direction = ColumnGraphDirection.from_str(direction)
         self._init_axis(table.dataset_ids)
-        self.link_table(table)
+        self._link_table(table)
 
     def _init_axis(self, dataset_ids: list[str]) -> None:
-        if self._direction is sgopt.ColumnGraphDirection.VERTICAL:
-            self.xaxis = self.categorical_axis = CategoricalAxis(
-                "x", dataset_ids
-            )
-            self.yaxis = self.continuous_axis = ContinuousAxis("y")
+        if self._direction is ColumnGraphDirection.VERTICAL:
+            self.categorical_axis = CategoricalAxis("x", dataset_ids)
+            self.continuous_axis = ContinuousAxis("y")
+            self.xaxis, self.yaxis = self.categorical_axis, self.continuous_axis
         else:  # Horizontal
-            self.xaxis = self.continuous_axis = ContinuousAxis("x")
-            self.yaxis = self.categorical_axis = CategoricalAxis(
-                "y", dataset_ids
-            )
+            self.continuous_axis = ContinuousAxis("x")
+            self.categorical_axis = CategoricalAxis("y", dataset_ids)
+            self.xaxis, self.yaxis = self.continuous_axis, self.categorical_axis
 
     @override
-    def link_table(self, table: ColumnTable) -> None:
+    def _link_table(self, table: ColumnTable) -> None:
         if not isinstance(table, ColumnTable):
             raise TypeError("Only ColumnTables can be linked to ColumnGraphs.")
-        self.table = table
+
+        self._table = table
         self.categorical_axis.title = table.x_title
         self.continuous_axis.title = table.y_title
 
@@ -58,22 +53,14 @@ class ColumnGraph(Graph[ColumnTable]):
         self,
         ty: Literal["mean", "geometric mean", "median", "individual", "swarm"],
     ) -> Self:
-        if (points := Points.from_str(ty)) is None:
-            raise ValueError("Invalid plot argument.")
-
-        self._check_component_compatibility(points)
-        self._artists.append(points)
+        self._register_component(ty, PointsType, Points)
         return self
-
+        
     def add_errorbars(
         self,
         ty: Literal["sd", "geometric sd", "sem", "ci95", "range"],
     ) -> Self:
-        if (errorbar := ErrorBars.from_str(ty)) is None:
-            raise ValueError("Invalid errorbar argument.")
-
-        self._check_component_compatibility(errorbar)
-        self._artists.append(errorbar)
+        self._register_component(ty, ErrorbarType, ErrorBars)
         return self
 
     def add_connecting_line(
@@ -82,31 +69,23 @@ class ColumnGraph(Graph[ColumnTable]):
         *,
         join_nan: bool = False
     ) -> Self:
-        if (connecting_line := ConnectingLine.from_str(ty, join_nan)) is None:
-            raise ValueError("Invalid connecting line type")
-
-        self._check_component_compatibility(connecting_line)
-        self._artists.append(connecting_line)
+        self._register_component(
+            ty, ConnectingLineType, ConnectingLine, join_nan=join_nan
+        )
         return self
-
+        
     def add_bars(
         self,
-        ty: Literal["mean", "median", "geometric mean"] | sgopt.BarType,
+        ty: Literal["mean", "median", "geometric mean"]
     ) -> Self:
-        bar_t = sgopt.BarType.from_str(ty)
-        bar = Bars.from_opt(bar_t)
-        self._check_component_compatibility(bar)
-        self._artists.append(bar)
+        self._register_component(ty, BarType, Bars)
         return self
 
     def add_lines(
         self,
-        ty: Literal["mean", "median", "geometric mean"] | sgopt.LineType,
+        ty: Literal["mean", "median", "geometric mean"]
     ) -> Self:
-        line_t = sgopt.LineType.from_str(ty)
-        line = Bars.from_opt(line_t, line_only=True)
-        self._check_component_compatibility(line)
-        self._artists.append(line)
+        self._register_component(ty, LineType, Bars, line_only=True)
         return self
 
     @override
@@ -119,7 +98,7 @@ class ColumnGraph(Graph[ColumnTable]):
         self.xaxis._format_axes(ax)
         self.yaxis._format_axes(ax)
 
-        for artist in self._artists:
+        for artist in self._components:
             artist.draw_column(self, ax)
 
         for analysis in self._linked_analyses:
@@ -129,8 +108,3 @@ class ColumnGraph(Graph[ColumnTable]):
             self._compose_legend(ax)
 
         return ax
-
-    @property
-    @override
-    def _checkcode(self) -> TypeChecked.Type:
-       return TypeChecked.Type(sgopt.GraphType.COLUMN, self._subtype)

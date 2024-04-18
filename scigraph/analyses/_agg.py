@@ -86,13 +86,3 @@ class ConfidenceInterval:
         n = np.count_nonzero(arr)
         critical_val = t.ppf((1 + level) / 2, n - 1)
         return critical_val * arr.std() / n ** 0.5
-
-
-_MAP = {
-    "mean": Basic.mean,
-    "median": Basic.median,
-}
-
-
-def agg(s: str) -> Callable[..., float]:
-    return _MAP[s]

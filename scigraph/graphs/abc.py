@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Self, NamedTuple, TYPE_CHECKING
+from typing import Any, Self, TYPE_CHECKING
 
 from scigraph.analyses.abc import GraphableAnalysis
 from scigraph.styles._plot_properties import (
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
     from scigraph.datatables.abc import DataTable
     from scigraph.graphs import XYGraph, ColumnGraph
-    from scigraph._options import Option, GraphType
+    from scigraph._options import Option
 
 
 class Graph[T: DataTable](ABC):
@@ -22,12 +22,17 @@ class Graph[T: DataTable](ABC):
     def __init__(self) -> None:
         self._legend_artists: dict[str, list[Any]] = {}
         self._linked_analyses: list[GraphableAnalysis] = []
+        self._components: list[GraphComponent] = []
         self.include_legend = True
 
     @abstractmethod
-    def link_table(self, table: T) -> None:
-        self.table: T
+    def _link_table(self, table: T) -> None:
+        self._table: T
         ...
+
+    @property
+    def table(self) -> T:
+        return self._table
 
     def link_analysis(self, analysis: GraphableAnalysis) -> Self:
         if not isinstance(analysis, GraphableAnalysis):
@@ -41,21 +46,6 @@ class Graph[T: DataTable](ABC):
 
     @abstractmethod
     def draw(self, ax: Axes | None) -> Axes: ...
-
-    @property
-    @abstractmethod
-    def _checkcode(self) -> TypeChecked.Type:
-        """Identifier for Component Compatibility Checking"""
-
-    def _check_component_compatibility(
-        self,
-        component: TypeChecked
-    ) -> None:
-        if self._checkcode not in component._compatible_types():
-            raise TypeError(
-                f"{component.__class__.__name__} is incompatible with "
-                f"{self._checkcode} {self.__class__.__name__}s."
-            )
 
     @property
     def plot_properties(self) -> dict[str, PlotProperties]:
@@ -83,23 +73,19 @@ class Graph[T: DataTable](ABC):
 
         self._legend_artists[group].append(artist)
 
-
-class TypeChecked(ABC):
-
-    class Type(NamedTuple):
-        graph_t: GraphType 
-        subtype: Option | None
-
-    @classmethod
-    def check_compatible(cls, other: Self) -> bool:
-        return len(cls._compatible_types() & other._compatible_types()) > 0
-
-    @classmethod
-    @abstractmethod
-    def _compatible_types(cls) -> set[TypeChecked.Type]: ...
+    def _register_component(
+        self,
+        ty: str,
+        opt_t: type[Option],
+        component_t: type[GraphComponent],
+        **kwargs,
+    ) -> None:
+        opt = opt_t.from_str(ty)
+        component = component_t.from_opt(opt, **kwargs)
+        self._components.append(component)
 
 
-class Artist(ABC):
+class GraphComponent(ABC):
 
     @abstractmethod
     def draw_xy(
@@ -118,3 +104,7 @@ class Artist(ABC):
         *args,
         **kwargs,
     ) -> None: ...
+
+    @classmethod
+    @abstractmethod
+    def from_opt(cls, opt, **kwargs) -> Self: ...

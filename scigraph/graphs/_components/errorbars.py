@@ -1,27 +1,22 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Mapping, override, Self, TYPE_CHECKING
+from typing import Mapping, override, TYPE_CHECKING
 
 import numpy as np
 from numpy.typing import NDArray
 from pandas import DataFrame
 from matplotlib.axes import Axes
 
-from scigraph.graphs.abc import Artist, TypeChecked
-from scigraph._options import (
-    GraphType,
-    XYGraphSubtype, 
-    ColumnGraphSubtype,
-    ColumnGraphDirection
-)
+from scigraph.graphs.abc import GraphComponent 
+from scigraph._options import ColumnGraphDirection, ErrorbarType
 import scigraph.analyses._agg as agg
 
 if TYPE_CHECKING:
     from scigraph.graphs import XYGraph, ColumnGraph
 
 
-class ErrorBars(Artist, TypeChecked, ABC):
+class ErrorBars(GraphComponent, ABC):
 
     @override
     def draw_xy(
@@ -64,16 +59,14 @@ class ErrorBars(Artist, TypeChecked, ABC):
                     *args, **kwargs, color="k", marker="", ls="")
 
     @abstractmethod
-    def _prepare_xy(self, graph: XYGraph) -> tuple[DataFrame, Errors]: ...
+    def _prepare_xy(self, graph: XYGraph, /) -> tuple[DataFrame, Errors]: ...
 
     @abstractmethod
-    def _prepare_column(self, graph: ColumnGraph) -> tuple[NDArray, NDArray]: ...
+    def _prepare_column(self, graph: ColumnGraph, /) -> tuple[NDArray, NDArray]: ...
 
     @classmethod
-    def from_str(cls, s: str) -> Self | None:
-        if s in _FACTORY_MAP:
-            return _FACTORY_MAP[s]()
-        return None
+    def from_opt(cls, opt: ErrorbarType, **_) -> ErrorBars:
+        return _FACTORY_MAP[opt]()
 
 
 class SDErrorBars(ErrorBars):
@@ -90,16 +83,6 @@ class SDErrorBars(ErrorBars):
         yerr = graph.table._reduce_by_column(agg.Basic.sd)
         return yori, yerr
 
-    @override
-    @classmethod
-    def _compatible_types(cls) -> set[TypeChecked.Type]:
-        return {
-            TypeChecked.Type(GraphType.XY, XYGraphSubtype.MEAN),
-            TypeChecked.Type(GraphType.COLUMN, ColumnGraphSubtype.MEAN),
-            TypeChecked.Type(GraphType.COLUMN, ColumnGraphSubtype.INDIVIDUAL),
-            TypeChecked.Type(GraphType.COLUMN, ColumnGraphSubtype.SWARM)
-        }
-
 
 class SEMErrorBars(ErrorBars):
 
@@ -114,13 +97,6 @@ class SEMErrorBars(ErrorBars):
         yori = graph.table._reduce_by_column(agg.Basic.mean)
         yerr = graph.table._reduce_by_column(agg.Basic.sem)
         return yori, yerr
-
-    @classmethod
-    def _compatible_types(cls) -> set[TypeChecked.Type]:
-        return {
-            TypeChecked.Type(GraphType.XY, XYGraphSubtype.MEAN),
-            TypeChecked.Type(GraphType.COLUMN, ColumnGraphSubtype.MEAN)
-        }
 
 
 class CI95ErrorBars(ErrorBars):
@@ -141,22 +117,12 @@ class CI95ErrorBars(ErrorBars):
         )
         return yori, yerr
 
-    @override
-    @classmethod
-    def _compatible_types(cls) -> set[TypeChecked.Type]:
-        return {
-            TypeChecked.Type(GraphType.XY, XYGraphSubtype.MEAN),
-            TypeChecked.Type(GraphType.COLUMN, ColumnGraphSubtype.MEAN),
-        }
-
 
 class RangeErrorBars(ErrorBars):
 
     @override
     def _prepare_xy(self, graph: XYGraph) -> tuple[DataFrame, Errors]:
-        ori = graph.table._reduce_by_row_dataset_column(
-            agg.agg(graph._subtype.to_str())
-        )
+        ori = graph.table._reduce_by_row_dataset_column(agg.Basic.mean)
         lower = ori - graph.table._reduce_by_row_dataset_column(agg.Basic.min)
         upper = graph.table._reduce_by_row_dataset_column(agg.Basic.max) - ori
         err = {col: (lower[col].values, upper[col].values) for col in ori}
@@ -164,21 +130,11 @@ class RangeErrorBars(ErrorBars):
 
     @override
     def _prepare_column(self, graph: ColumnGraph) -> tuple[NDArray, NDArray]:
-        ori = graph.table._reduce_by_column(agg.agg(graph._subtype.to_str()))
+        ori = graph.table._reduce_by_column(agg.Basic.mean)
         lower = ori - graph.table._reduce_by_column(agg.Basic.min)
         upper = graph.table._reduce_by_column(agg.Basic.max) - ori
         err = np.vstack((lower, upper))
         return ori, err
-
-    @override
-    @classmethod
-    def _compatible_types(cls) -> set[TypeChecked.Type]:
-        return {
-            TypeChecked.Type(GraphType.XY, XYGraphSubtype.MEAN),
-            TypeChecked.Type(GraphType.XY, XYGraphSubtype.MEDIAN),
-            TypeChecked.Type(GraphType.COLUMN, ColumnGraphSubtype.MEAN),
-            TypeChecked.Type(GraphType.COLUMN, ColumnGraphSubtype.MEDIAN),
-        }
 
 
 class GeometricSDErrorBars(ErrorBars):
@@ -199,23 +155,13 @@ class GeometricSDErrorBars(ErrorBars):
         yerr = graph.table._reduce_by_column(agg.Advanced.geometric_sd)
         return yori, yerr
 
-    @override
-    @classmethod
-    def _compatible_types(cls) -> set[TypeChecked.Type]:
-        return {
-            TypeChecked.Type(GraphType.XY, XYGraphSubtype.GEOMETRIC_MEAN),
-            TypeChecked.Type(
-                GraphType.COLUMN, ColumnGraphSubtype.GEOMETRIC_MEAN
-            ),
-        }
 
-
-_FACTORY_MAP = {
-    "sd": SDErrorBars,
-    "sem": SEMErrorBars,
-    "ci95": CI95ErrorBars,
-    "range": RangeErrorBars,
-    "geometric sd": GeometricSDErrorBars,
+_FACTORY_MAP: dict[ErrorbarType, type[ErrorBars]] = {
+    ErrorbarType.SD: SDErrorBars,
+    ErrorbarType.SEM: SEMErrorBars,
+    ErrorbarType.CI95: CI95ErrorBars,
+    ErrorbarType.RANGE: RangeErrorBars,
+    ErrorbarType.GEOMETRIC_SD: GeometricSDErrorBars,
 }
 
 type Errors = DataFrame | Mapping[str, tuple[NDArray, NDArray]]

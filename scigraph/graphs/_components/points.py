@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import Never, override, TYPE_CHECKING
 import logging
 
@@ -9,20 +9,15 @@ import numpy as np
 from numpy.typing import NDArray
 from pandas import DataFrame
 
-from ..abc import TypeChecked, Artist
-from scigraph._options import (
-    GraphType,
-    XYGraphSubtype,
-    ColumnGraphSubtype,
-    ColumnGraphDirection
-)
+from scigraph.graphs.abc import GraphComponent
+from scigraph._options import ColumnGraphDirection, PointsType
 import scigraph.analyses._agg as agg
 
 if TYPE_CHECKING:
     from scigraph.graphs import XYGraph, ColumnGraph
 
 
-class Points(Artist, TypeChecked):
+class Points(GraphComponent, ABC):
 
     @override
     def draw_xy(
@@ -57,16 +52,15 @@ class Points(Artist, TypeChecked):
         ax.plot(x, y, *args, **kwargs, marker="o", color="k", ls="")
 
     @abstractmethod
-    def _prepare_xy(self, graph: XYGraph) -> DataFrame: ...
+    def _prepare_xy(self, graph: XYGraph, /,) -> DataFrame: ...
 
     @abstractmethod
-    def _prepare_column(self, graph: ColumnGraph) -> NDArray: ...
+    def _prepare_column(self, graph: ColumnGraph, /,) -> NDArray: ...
 
+    @override
     @classmethod
-    def from_str(cls, s: str) -> Points | None:
-        if s in _FACTORY_MAP:
-            return _FACTORY_MAP[s]()
-        return None
+    def from_opt(cls, opt: PointsType, **_) -> Points:
+        return _FACTORY_MAP[opt]()
 
 
 class MeanPoints(Points):
@@ -78,14 +72,6 @@ class MeanPoints(Points):
     @override
     def _prepare_column(self, graph: ColumnGraph) -> NDArray:
         return graph.table._reduce_by_column(agg.Basic.mean)
-
-    @override
-    @classmethod
-    def _compatible_types(cls) -> set[TypeChecked.Type]:
-        return {
-            TypeChecked.Type(GraphType.XY, XYGraphSubtype.MEAN),
-            TypeChecked.Type(GraphType.COLUMN, ColumnGraphSubtype.MEAN),
-        }
 
 
 class GeometricMeanPoints(Points):
@@ -100,13 +86,6 @@ class GeometricMeanPoints(Points):
     def _prepare_column(self, graph: ColumnGraph) -> NDArray:
         return graph.table._reduce_by_column(agg.Advanced.geometric_mean)
 
-    @override
-    @classmethod
-    def _compatible_types(cls) -> set[TypeChecked.Type]:
-        return {
-            TypeChecked.Type(GraphType.XY, XYGraphSubtype.GEOMETRIC_MEAN),
-            TypeChecked.Type(GraphType.COLUMN, ColumnGraphSubtype.GEOMETRIC_MEAN),
-        }
 
 class MedianPoints(Points):
 
@@ -117,14 +96,6 @@ class MedianPoints(Points):
     @override
     def _prepare_column(self, graph: ColumnGraph) -> NDArray:
         return graph.table._reduce_by_column(agg.Basic.median)
-
-    @override
-    @classmethod
-    def _compatible_types(cls) -> set[TypeChecked.Type]:
-        return {
-            TypeChecked.Type(GraphType.XY, XYGraphSubtype.MEDIAN),
-            TypeChecked.Type(GraphType.COLUMN, ColumnGraphSubtype.MEDIAN),
-        }
 
 
 class IndividualPoints(Points):
@@ -171,29 +142,21 @@ class IndividualPoints(Points):
         ax.plot(x, y, *args, **kwargs, marker="o", color="k", ls="")
 
     @override
-    def _prepare_xy(self, graph: XYGraph) -> Never:
+    def _prepare_xy(self, _) -> Never:
         raise NotImplementedError
 
     @override
-    def _prepare_column(self, graph: ColumnGraph) -> Never:
+    def _prepare_column(self, _) -> Never:
         raise NotImplementedError
-
-    @override
-    @classmethod
-    def _compatible_types(cls) -> set[TypeChecked.Type]:
-        return {
-            TypeChecked.Type(GraphType.XY, XYGraphSubtype.INDIVIDUAL),
-            TypeChecked.Type(GraphType.COLUMN, ColumnGraphSubtype.INDIVIDUAL),
-        }
 
 
 class SwarmPoints(Points): ...  # TODO
 
 
-_FACTORY_MAP: dict[str, type[Points]] = {
-    "mean": MeanPoints,
-    "geometric mean": GeometricMeanPoints,
-    "median": MedianPoints,
-    "individual": IndividualPoints,
-    "swarm": SwarmPoints,
+_FACTORY_MAP: dict[PointsType, type[Points]] = {
+    PointsType.MEAN: MeanPoints,
+    PointsType.GEOMETRIC_MEAN: GeometricMeanPoints,
+    PointsType.MEDIAN: MedianPoints,
+    PointsType.INDIVIDUAL: IndividualPoints,
+    PointsType.SWARM: SwarmPoints,
 }
