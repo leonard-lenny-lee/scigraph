@@ -13,9 +13,7 @@ from scigraph.config import SG_DEFAULTS
 class ColumnTable(DataTable):
     
     def __init__(self, values: NDArray) -> None:
-        # Check array shape
-        if values.ndim != 2:
-            raise ValueError("Expected 2D matrix.")
+        values = self._sanitize_values(values)
         _, n_cols = values.shape
 
         # Protected attributes

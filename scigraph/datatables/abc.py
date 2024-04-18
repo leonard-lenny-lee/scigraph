@@ -2,13 +2,31 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
+import numpy as np
 from numpy.typing import NDArray
 from pandas import DataFrame
 
 
 class DataTable(ABC):
+
+    def _sanitize_values(self, values: Any) -> NDArray[np.float64]:
+        # Coerce into NDArray[np.float64]
+        try:
+            if not isinstance(values, np.ndarray):
+                values = np.array(values, dtype=float)
+            elif values.dtype != np.float64:
+                values = values.astype(float)
+        except Exception as e:
+            raise ValueError(
+                "Unable to coerce values into np.float64 ndarray. Check input."
+            ) from e
+        # Check dimensions
+        if values.ndim != 2:
+            raise ValueError("Expected 2D matrix.")
+        return values
+        
 
     @abstractmethod
     def as_df(self) -> DataFrame:

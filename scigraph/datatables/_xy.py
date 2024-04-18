@@ -17,9 +17,7 @@ class XYTable(DataTable):
         n_y_replicates: int,
         n_datasets: int,
     ) -> None:
-        # Check array shape
-        if values.ndim != 2:
-            raise ValueError("Expected 2D matrix.")
+        values = self._sanitize_values(values)
         expected_ncols = n_x_replicates + n_y_replicates * n_datasets
         if expected_ncols != (n_cols := values.shape[1]):
             raise ValueError(f"Expected {expected_ncols}, found {n_cols}")

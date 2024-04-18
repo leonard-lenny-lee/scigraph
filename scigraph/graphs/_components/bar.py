@@ -35,12 +35,12 @@ class Bars(GraphComponent, ABC):
     ) -> None:
         x = np.linspace(0, graph.table.ncols - 1, graph.table.ncols)
         y = self._prepare_column(graph)
-        if self.line_only:  # Draw top line of bar only
+        if not self.line_only:  # Draw full bars
             if graph._direction is ColumnGraphDirection.VERTICAL:
                 ax.bar(x, y, *args, **kwargs)
             else:  # Horizontal
                 ax.barh(x, y, *args, **kwargs)
-        else:  # Draw full bars
+        else:  # Draw top line of bar only
             if graph._direction is ColumnGraphDirection.VERTICAL:
                 ax.hlines(y, x - 0.25, x + 0.25, *args, **kwargs)
             else:  # Horizontal
