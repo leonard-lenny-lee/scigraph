@@ -23,13 +23,17 @@
 
   [graphs.column]
   
-  linewidth = 1
+  linewidth = 0.5
   markersize = 3
   capsize = 5
-  capthickness = 1
+  capthickness = 0.5
   color = 'k'
   ls = '-'
   marker = 'o'
+  barcolor = ['dimgrey', 'lightgrey', 'darkgrey', 'whitesmoke']
+  barwidth = 0.5
+  baredgecolor = 'k'
+  baredgethickness = 1
 
   [graphs.axis]
 

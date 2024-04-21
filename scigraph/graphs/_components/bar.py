@@ -30,17 +30,24 @@ class Bars(GraphComponent, ABC):
     def draw_column(self, graph: ColumnGraph, ax: Axes) -> None:
         x = np.linspace(0, graph.table.ncols - 1, graph.table.ncols)
         y = self._prepare_column(graph)
+        is_vertical = graph._direction is ColumnGraphDirection.VERTICAL
 
-        if not self.line_only:  # Draw full bars
-            if graph._direction is ColumnGraphDirection.VERTICAL:
-                ax.bar(x, y, **self.kw)
-            else:  # Horizontal
-                ax.barh(x, y, **self.kw)
-        else:  # Draw top line of bar only
-            if graph._direction is ColumnGraphDirection.VERTICAL:
-                ax.hlines(y, x - 0.25, x + 0.25, **self.kw)
-            else:  # Horizontal
-                ax.vlines(y, x - 0.25, x + 0.25, **self.kw)
+        for i, id in enumerate(graph.table.dataset_ids):
+            if not self.line_only:  # Draw full bars
+                props = graph.plot_properties[id].bar_kw(is_vertical)
+                props.update(**self.kw)
+                if is_vertical:
+                    ax.bar(x[i], y[i], **props)
+                else:  # Horizontal
+                    ax.barh(x[i], y[i], **props)
+            else:  # Draw top line of bar only
+                props = graph.plot_properties[id].barl_kw()
+                props.update(**self.kw)
+                x_ = x[i] - 0.25, x[i] + 0.25
+                if is_vertical:
+                    ax.hlines(y[i], *x_, **props)
+                else:  # Horizontal
+                    ax.vlines(y[i], *x_, **props)
 
     @abstractmethod
     def _prepare_column(self, graph: ColumnGraph) -> NDArray: ...

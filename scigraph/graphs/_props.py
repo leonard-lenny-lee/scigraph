@@ -1,8 +1,10 @@
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass
 class PlotProps:
+    # Common properties
     linewidth: float
     markersize: float
     capsize: float
@@ -10,6 +12,12 @@ class PlotProps:
     color: str
     marker: str
     ls: str
+
+    # Bar properties
+    barcolor: Optional[str] = None
+    barwidth: Optional[float] = None
+    baredgecolor: Optional[str] = None
+    baredgethickness: Optional[float] = None
 
     def point_kws(self) -> dict:
         return {
@@ -35,4 +43,20 @@ class PlotProps:
             "capthick": self.capthickness,
             "marker": "",
             "ls": ""
+        }
+
+    def bar_kw(self, vertical: bool = False) -> dict:
+        out = {
+            "color": self.barcolor,
+            "linewidth": self.baredgethickness,
+            "edgecolor": self.baredgecolor,
+        }
+        key = "width" if vertical else "height"
+        out[key] = self.barwidth  # type: ignore
+        return out
+
+    def barl_kw(self) -> dict:
+        return {
+            "color": self.baredgecolor,
+            "linewidth": self.baredgethickness,
         }
