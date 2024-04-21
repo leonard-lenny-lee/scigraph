@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from typing import Any, TYPE_CHECKING, Iterator, Literal
-import logging
 
 from matplotlib.figure import Figure
 from matplotlib.legend import Legend
 
 from scigraph.layouts._caption import Caption
+from scigraph._log import LOG
 
 if TYPE_CHECKING:
     from scigraph.graphs.abc import Graph
@@ -29,7 +29,7 @@ class Layout(ABC):
         if key is None:
             key = self._get_empty_pos_key()
         if self.get_position(key) is not None:
-            logging.warn(f"Replaced graph at position {key}.")
+            LOG.warn(f"Replaced graph at position {key}.")
         self.set_position(key, graph)
 
     def add_caption(

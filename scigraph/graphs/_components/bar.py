@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Never, Self, override, TYPE_CHECKING
+from typing import Never, Self, Any, override, TYPE_CHECKING
 
 import numpy as np
 from numpy.typing import NDArray
@@ -18,7 +18,8 @@ if TYPE_CHECKING:
 
 class Bars(GraphComponent, ABC):
     
-    def __init__(self, line_only: bool = False) -> None:
+    def __init__(self, kw: dict[str, Any], line_only: bool = False) -> None:
+        super().__init__(kw)
         self.line_only = line_only
 
     @override
@@ -26,33 +27,28 @@ class Bars(GraphComponent, ABC):
         raise NotImplementedError
 
     @override
-    def draw_column(
-        self,
-        graph: ColumnGraph,
-        ax: Axes,
-        *args,
-        **kwargs,
-    ) -> None:
+    def draw_column(self, graph: ColumnGraph, ax: Axes) -> None:
         x = np.linspace(0, graph.table.ncols - 1, graph.table.ncols)
         y = self._prepare_column(graph)
+
         if not self.line_only:  # Draw full bars
             if graph._direction is ColumnGraphDirection.VERTICAL:
-                ax.bar(x, y, *args, **kwargs)
+                ax.bar(x, y, **self.kw)
             else:  # Horizontal
-                ax.barh(x, y, *args, **kwargs)
+                ax.barh(x, y, **self.kw)
         else:  # Draw top line of bar only
             if graph._direction is ColumnGraphDirection.VERTICAL:
-                ax.hlines(y, x - 0.25, x + 0.25, *args, **kwargs)
+                ax.hlines(y, x - 0.25, x + 0.25, **self.kw)
             else:  # Horizontal
-                ax.vlines(y, x - 0.25, x + 0.25, *args, **kwargs)
+                ax.vlines(y, x - 0.25, x + 0.25, **self.kw)
 
     @abstractmethod
     def _prepare_column(self, graph: ColumnGraph) -> NDArray: ...
 
     @override
     @classmethod
-    def from_opt(cls, opt: BarType, **kwargs) -> Self:
-        return _FACTORY_MAP[opt](**kwargs)
+    def from_opt(cls, opt: BarType, kw, **kwargs) -> Self:
+        return _FACTORY_MAP[opt](kw, **kwargs)
 
 
 class MeanBars(Bars):

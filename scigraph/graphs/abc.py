@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Self, TYPE_CHECKING
+from itertools import cycle
+from typing import Any, Optional, Self, TYPE_CHECKING
 
 from scigraph.analyses.abc import GraphableAnalysis
-from scigraph.styles._plot_properties import (
-    generate_plot_prop_cycle,
-    PlotProperties
-)
+from scigraph.config import SG_DEFAULTS
+from scigraph.graphs._props import PlotProps
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
@@ -48,15 +47,25 @@ class Graph[T: DataTable](ABC):
     def draw(self, ax: Axes | None) -> Axes: ...
 
     @property
-    def plot_properties(self) -> dict[str, PlotProperties]:
+    def plot_properties(self) -> dict[str, PlotProps]:
         if not hasattr(self, "_plot_properties"):
             self._compile_plot_properties()
         return self._plot_properties
 
     def _compile_plot_properties(self) -> None:
-        n_datasets = len(self.table.dataset_ids)
-        prop_cycle = generate_plot_prop_cycle(n_datasets)
-        self._plot_properties = dict(zip(self.table.dataset_ids, prop_cycle))
+        assert hasattr(self, "_table")
+
+        schema_key = f"graphs.{self._schema_access_key()}"
+        props = SG_DEFAULTS[schema_key]
+        static_props = {k: v for k, v in props.items() if k != "cycle"}
+        cycles = [cycle(p) for p in props["cycle"].values()]
+        dataset_props = {}
+
+        for ds_id, *p in zip(self.table.dataset_ids, *cycles):
+            cyclic_props = dict(zip(props["cycle"].keys(), p))
+            dataset_props[ds_id] = PlotProps(**static_props, **cyclic_props)
+        
+        self._plot_properties = dataset_props
 
     def _compose_legend(self, ax: Axes):
         labels = []
@@ -78,33 +87,29 @@ class Graph[T: DataTable](ABC):
         ty: str,
         opt_t: type[Option],
         component_t: type[GraphComponent],
+        kw: dict[str, Any],
         **kwargs,
     ) -> None:
         opt = opt_t.from_str(ty)
-        component = component_t.from_opt(opt, **kwargs)
+        component = component_t.from_opt(opt, kw, **kwargs)
         self._components.append(component)
+
+    @classmethod
+    def _schema_access_key(cls) -> str:
+        return cls.__name__.lower().replace("graph", "")
 
 
 class GraphComponent(ABC):
 
-    @abstractmethod
-    def draw_xy(
-        self,
-        graph: XYGraph,
-        ax: Axes,
-        *args,
-        **kwargs,
-    ) -> None: ...
+    def __init__(self, kw: dict[str, Any]) -> None:
+        self.kw = kw
 
     @abstractmethod
-    def draw_column(
-        self,
-        graph: ColumnGraph,
-        ax: Axes,
-        *args,
-        **kwargs,
-    ) -> None: ...
+    def draw_xy(self, graph: XYGraph, ax: Axes) -> None: ...
+
+    @abstractmethod
+    def draw_column(self, graph: ColumnGraph, ax: Axes) -> None: ...
 
     @classmethod
     @abstractmethod
-    def from_opt(cls, opt, **kwargs) -> Self: ...
+    def from_opt(cls, opt, kw, **kwargs) -> Self: ...

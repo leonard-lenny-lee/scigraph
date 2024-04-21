@@ -25,6 +25,7 @@ class XYGraph(Graph[XYTable]):
         self.yaxis = ContinuousAxis("y")
         self.secondary_yaxis = None
         self._link_table(table)
+        self._compile_plot_properties()
 
     @override
     def _link_table(self, table: XYTable) -> None:
@@ -38,25 +39,28 @@ class XYGraph(Graph[XYTable]):
     def add_points(
         self,
         ty: Literal["mean", "geometric mean", "median", "individual"],
+        **plot_kw,
     ) -> Self:
-        self._register_component(ty, PointsType, Points)
+        self._register_component(ty, PointsType, Points, plot_kw)
         return self
 
     def add_errorbars(
         self,
         ty: Literal["sd", "geometric sd", "sem", "ci95", "range"],
+        **plot_kw,
     ) -> Self:
-        self._register_component(ty, ErrorbarType, ErrorBars)
+        self._register_component(ty, ErrorbarType, ErrorBars, plot_kw)
         return self
 
     def add_connecting_line(
         self,
         ty: Literal["mean", "geometric mean", "median", "individual"],
         *,
-        join_nan: bool = False
+        join_nan: bool = False,
+        **plot_kw,
     ) -> Self:
         self._register_component(
-            ty, ConnectingLineType, ConnectingLine, join_nan=join_nan
+            ty, ConnectingLineType, ConnectingLine, plot_kw, join_nan=join_nan
         )
         return self
 
@@ -69,8 +73,6 @@ class XYGraph(Graph[XYTable]):
     def draw(self, ax: Axes | None = None) -> Axes:
         if ax is None:
             ax = plt.gca()
-
-        self._compile_plot_properties()
 
         self.xaxis._format_axes(ax)
         self.yaxis._format_axes(ax)

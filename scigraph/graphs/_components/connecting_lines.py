@@ -4,7 +4,7 @@ Artists that connect average of replicates together, or individual replicates
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Never, Self, override, TYPE_CHECKING
+from typing import Any, Never, Self, override, TYPE_CHECKING
 
 from matplotlib.axes import Axes
 from matplotlib.lines import Line2D
@@ -22,43 +22,41 @@ if TYPE_CHECKING:
 
 class ConnectingLine(GraphComponent, ABC):
 
-    def __init__(self, join_nan: bool) -> None:
+    def __init__(self, kw: dict[str, Any], join_nan: bool) -> None:
+        super().__init__(kw)
         self.join_nan = join_nan
 
     @override
-    def draw_xy(
-        self,
-        graph: XYGraph,
-        ax: Axes,
-        *args,
-        **kwargs,
-    ) -> None:
+    def draw_xy(self, graph: XYGraph, ax: Axes) -> None:
         agg = self._prepare_xy(graph)
 
         for id in graph.table.dataset_ids:
-            props = graph.plot_properties[id]
+            props = graph.plot_properties[id].line_kws()
+            props.update(**self.kw)
             x = np.array(agg[graph.table.x_title].values).flatten()
             y = np.array(agg[id].values).flatten()
             if self.join_nan:
                 # Mask NaN values so there is a continuous joined line
                 x, y = self._mask_nan(x, y)
-            artist, = ax.plot(x, y, *args, **kwargs,
-                              marker="", color=props.color, ls=props.linestyle)
+            artist, = ax.plot(x, y, **props)
             graph._add_legend_artist(id, artist)
 
     @override
-    def draw_column(
-        self,
-        graph: ColumnGraph, 
-        ax: Axes,
-        *args,
-        **kwargs
-    ) -> None:
+    def draw_column(self, graph: ColumnGraph,  ax: Axes) -> None:
         x = np.linspace(0, graph.table.ncols - 1, graph.table.ncols)
         y = self._prepare_column(graph)
         if graph._direction is ColumnGraphDirection.HORIZONTAL:
             x, y = y, x
-        ax.plot(x, y, *args, **kwargs, marker="", color="k", ls="-")
+
+        # It doesn't make sense for connecting lines between groups to have
+        # different linestyles so use the first one provided
+        line_kws = (
+            graph
+            .plot_properties[graph.table.dataset_ids[0]]
+            .line_kws()
+        )
+        line_kws.update(**self.kw)
+        ax.plot(x, y, **line_kws)
 
     @abstractmethod
     def _prepare_xy(self, graph: XYGraph, /) -> DataFrame: ...
@@ -77,8 +75,13 @@ class ConnectingLine(GraphComponent, ABC):
         return masked_array[0], masked_array[1]
 
     @classmethod
-    def from_opt(cls, opt: ConnectingLineType, **kwargs) -> Self:
-        return _FACTORY_MAP[opt](**kwargs)
+    def from_opt(
+        cls,
+        opt: ConnectingLineType,
+        kw: dict[str, Any],
+        **kwargs,
+    ) -> Self:
+        return _FACTORY_MAP[opt](kw, **kwargs)
 
 
 class MeanConnectingLine(ConnectingLine):
@@ -119,43 +122,36 @@ class MedianConnectingLine(ConnectingLine):
 class IndividualConnectingLine(ConnectingLine):
 
     @override
-    def draw_xy(
-        self,
-        graph: XYGraph,
-        ax: Axes,
-        *args,
-        **kwargs,
-    ) -> None:
+    def draw_xy(self, graph: XYGraph, ax: Axes) -> None:
         x = graph.table.x_values.mean(axis=1).flatten()
 
         for id, data in graph.table.datasets_itertuples():
-            props = graph.plot_properties[id]
+            props = graph.plot_properties[id].line_kws()
+            props.update(**self.kw)
             for y in data.y.T:
                 assert x.shape == y.shape
                 if self.join_nan:
                     x_, y = self._mask_nan(x, y)
                 else:
                     x_ = x
-                ax.plot(x_, y, *args, **kwargs,
-                        marker="", color=props.color, ls=props.linestyle)
-            artist = Line2D([], [],
-                            marker="", color=props.color, ls=props.linestyle)
+                ax.plot(x_, y, **props)
+            artist = Line2D([], [], **props)
             graph._add_legend_artist(id, artist)
 
     @override
-    def draw_column(
-        self,
-        graph: ColumnGraph, 
-        ax: Axes,
-        *args,
-        **kwargs
-    ) -> None:
+    def draw_column(self, graph: ColumnGraph,  ax: Axes) -> None:
         x = np.linspace(0, graph.table.ncols - 1, graph.table.ncols)
+        line_kws = (
+            graph
+            .plot_properties[graph.table.dataset_ids[0]]
+            .line_kws()
+        )
+        line_kws.update(**self.kw)
         for y in graph.table.values:
             x_ = x
             if graph._direction is ColumnGraphDirection.HORIZONTAL:
                 x_, y = y, x_
-            ax.plot(x_, y, *args, **kwargs, marker="", color="k", ls="-")
+            ax.plot(x_, y, **line_kws)
 
     @override
     def _prepare_xy(self, _) -> Never:

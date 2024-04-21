@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-import logging
 from typing import Literal, override, TYPE_CHECKING
 
 from matplotlib.axes import Axes
@@ -11,6 +10,7 @@ from pandas import DataFrame, Index
 from scipy.optimize import curve_fit
 
 from .abc import GraphableAnalysis
+from scigraph._log import LOG
 
 if TYPE_CHECKING:
     from scigraph.datatables import XYTable
@@ -97,7 +97,7 @@ class CurveFit(GraphableAnalysis, ABC):
                 popt, pcov = curve_fit(self._f, x[mask], y[mask],
                                        p0=self.p0, bounds=self._bounds)
             except RuntimeError as e:
-                logging.warn(e)
+                LOG.warn(e)
                 popt, pcov = None, None
 
             popts[id] = popt
@@ -146,8 +146,7 @@ class CurveFit(GraphableAnalysis, ABC):
             if popt is None:
                 continue
             y = self.predict(x, dataset_id)
-            line, = ax.plot(x, y, *args, **kwargs,
-                            c=props.color, marker="", ls=props.linestyle)
+            line, = ax.plot(x, y, *args, **kwargs, **props.line_kws())
             graph._add_legend_artist(dataset_id, line)
 
     @staticmethod

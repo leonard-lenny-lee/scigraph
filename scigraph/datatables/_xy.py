@@ -1,8 +1,8 @@
-from typing import override, Literal
+from typing import Callable, override
 
+import numpy as np
 from numpy.typing import NDArray
 from pandas import DataFrame, MultiIndex
-from scipy.stats import t, gstd
 
 from .abc import DataTable, DataSet
 from scigraph.config import SG_DEFAULTS
@@ -54,49 +54,6 @@ class XYTable(DataTable):
             x=self.x_values,
             y=self.y_values[:, start_col:end_col]
        )
-
-    def summarize(
-        self,
-        method: Literal["mean", "median", "geometric mean", "sd", "sem",
-                        "ci95", "min", "max", "range", "geometric sd", "n"],
-    ) -> DataFrame:
-        cols = self._columns().unique(level=0)
-        return self._summarize(method).T.reindex(columns=cols)
-
-    def _summarize(
-        self,
-        method: Literal["mean", "median", "geometric mean", "sd", "sem",
-                        "ci95", "min", "max", "range", "geometric sd", "n"],
-    ) -> DataFrame:
-        groupby = self.as_df().T.groupby(level=0)
-        match method:
-            case "mean":
-                out = groupby.mean()
-            case "median":
-                out = groupby.median()
-            case "geometric mean":
-                out = groupby.prod() ** (1 / self._summarize("n"))
-            case "sd":
-                out = groupby.std()
-            case "sem":
-                out = groupby.std() / self._summarize("n") ** 0.5
-            case "ci95":
-                n = self._summarize("n")
-                critical_vals = t.ppf(0.975, n - 1)
-                out = critical_vals * groupby.std() / n ** 0.5
-            case "min":
-                out = groupby.min()
-            case "max":
-                out = groupby.max()
-            case "range":
-                out = self._summarize("max") - self._summarize("min")
-            case "geometric sd":
-                out = groupby.agg(gstd)
-            case "n":
-                out = groupby.agg(lambda x: (~x.isna()).sum())
-            case _:
-                raise NotImplementedError
-        return out
 
     @property
     @override
@@ -156,8 +113,14 @@ class XYTable(DataTable):
             zip(self._dataset_names, range(self._n_datasets))
         )
 
-    def _reduce_by_row_dataset_column(self, f) -> DataFrame:
+    def _reduce_by_row_dataset_column(
+        self,
+        f: Callable[..., float]
+    ) -> DataFrame:
         out = self.as_df().T.groupby(level=0).agg(f)
         # Transform shape back into original
         cols = self._columns().unique(level=0)
         return out.T.reindex(columns=cols)
+
+    def _reduce_y_values_by_row(self, f: Callable[..., float]) -> NDArray:
+        return np.apply_along_axis(f, axis=1, arr=self.y_values)

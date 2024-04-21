@@ -6,7 +6,7 @@ from typing import Any, NamedTuple
 class Param[T](NamedTuple):
 
     ty: type[T] | tuple[type[T], ...]
-    opt: set[T] | None
+    opt: set[T] | None = None
 
     def validate(self, arg: Any) -> bool:
         return (
@@ -19,12 +19,25 @@ class Param[T](NamedTuple):
 
 
 # Generic Params
-String = Param(str, None)
-Int = Param(int, None)
-Float = Param(float, None)
-Num = Param((int, float), None)
+String = Param(str)
+Int = Param(int)
+Float = Param(float)
+Num = Param((int, float))
+Array = Param(list)
 
 type Schema = dict[str, Param | Schema]
+
+GRAPH_T_SCHEMA: Schema = {
+    "cycle": {
+        "color": Array,
+        "ls": Array,
+        "marker": Array,
+    },
+    "linewidth": Num,
+    "markersize": Num,
+    "capsize": Num,
+    "capthickness": Num
+}
 
 TEXT_SCHEMA: Schema = {
     "size": Num,
@@ -59,6 +72,8 @@ SCHEMA: Schema = {
         }
     },
     "graphs": {
+        "xy": GRAPH_T_SCHEMA,
+        "column": GRAPH_T_SCHEMA,
         "axis": {
             "continuous": {
                 "scale": Param(str, {"linear", "log10"}),
@@ -68,8 +83,7 @@ SCHEMA: Schema = {
                 }
             }
         }
-    }
-    ,
+    },
     "layout": {
         "caption": {
             "direction": Param(str, {"down", "up"}),

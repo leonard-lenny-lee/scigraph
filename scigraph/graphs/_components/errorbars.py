@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Mapping, override, TYPE_CHECKING
+from typing import Any, Mapping, override, TYPE_CHECKING
 
 import numpy as np
 from numpy.typing import NDArray
@@ -19,13 +19,7 @@ if TYPE_CHECKING:
 class ErrorBars(GraphComponent, ABC):
 
     @override
-    def draw_xy(
-        self,
-        graph: XYGraph,
-        ax: Axes,
-        *args,
-        **kwargs,
-    ) -> None:
+    def draw_xy(self, graph: XYGraph, ax: Axes) -> None:
         draw_x_errors = graph.table.n_x_replicates > 1
         draw_y_errors = graph.table.n_y_replicates > 1
 
@@ -37,26 +31,24 @@ class ErrorBars(GraphComponent, ABC):
         x_err = err[graph.table.x_title] if draw_x_errors else None
 
         for id in graph.table.dataset_ids:
+            (props := graph.plot_properties[id].errorbar_kw()).update(**self.kw)
             y = ori[id]
             y_err = err[id] if draw_y_errors else None
-            ax.errorbar(x, y, xerr=x_err, yerr=y_err,
-                        *args, **kwargs, marker="", ls="")
+            ax.errorbar(x, y, xerr=x_err, yerr=y_err, 
+                        **self.kw, **props)
 
     @override
-    def draw_column(
-        self,
-        graph: ColumnGraph,
-        ax: Axes,
-        *args,
-        **kwargs
-    ) -> None:
+    def draw_column(self, graph: ColumnGraph, ax: Axes) -> None:
         x = np.linspace(0, graph.table.ncols - 1, graph.table.ncols)
         yori, yerr = self._prepare_column(graph)
-        xerr = None
+        xerr = [None for _ in range(graph.table.ncols)]
         if graph._direction is ColumnGraphDirection.HORIZONTAL:
             x, yori, xerr, yerr = yori, x, yerr, xerr
-        ax.errorbar(x, yori, xerr=xerr, yerr=yerr,
-                    *args, **kwargs, color="k", marker="", ls="")
+
+        for i, id in enumerate(graph.table.dataset_ids):
+            (props := graph.plot_properties[id].errorbar_kw()).update(**self.kw)
+            ax.errorbar(x[i], yori[i], xerr=xerr[i], yerr=yerr[i],
+                        **self.kw, **props)
 
     @abstractmethod
     def _prepare_xy(self, graph: XYGraph, /) -> tuple[DataFrame, Errors]: ...
@@ -65,8 +57,8 @@ class ErrorBars(GraphComponent, ABC):
     def _prepare_column(self, graph: ColumnGraph, /) -> tuple[NDArray, NDArray]: ...
 
     @classmethod
-    def from_opt(cls, opt: ErrorbarType, **_) -> ErrorBars:
-        return _FACTORY_MAP[opt]()
+    def from_opt(cls, opt: ErrorbarType, kw: dict[str, Any], **_) -> ErrorBars:
+        return _FACTORY_MAP[opt](kw)
 
 
 class SDErrorBars(ErrorBars):

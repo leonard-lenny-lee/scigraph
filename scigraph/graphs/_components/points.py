@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from dataclasses import asdict
 from typing import Never, override, TYPE_CHECKING
-import logging
 
 from matplotlib.axes import Axes
 import numpy as np
@@ -13,6 +13,7 @@ import seaborn as sns
 from scigraph.graphs.abc import GraphComponent
 from scigraph._options import ColumnGraphDirection, PointsType
 import scigraph.analyses._agg as agg
+from scigraph._log import LOG
 
 if TYPE_CHECKING:
     from scigraph.graphs import XYGraph, ColumnGraph
@@ -21,36 +22,28 @@ if TYPE_CHECKING:
 class Points(GraphComponent, ABC):
 
     @override
-    def draw_xy(
-        self,
-        graph: XYGraph,
-        ax: Axes,
-        *args,
-        **kwargs,
-    ) -> None:
+    def draw_xy(self, graph: XYGraph, ax: Axes) -> None:
         agg = self._prepare_xy(graph)
         x = agg[graph.table.x_title]
 
         for id in graph.table.dataset_ids:
-            props = graph.plot_properties[id]
+            props = graph.plot_properties[id].point_kws()
             y = agg[id]
-            artist, = ax.plot(x, y, *args, **kwargs,
-                              marker=props.marker, color=props.color, ls="")
+            props.update(**self.kw)
+            artist, = ax.plot(x, y, **props)
             graph._add_legend_artist(id, artist)
 
     @override
-    def draw_column(
-        self,
-        graph: ColumnGraph,
-        ax: Axes,
-        *args,
-        **kwargs
-    ) -> None:
+    def draw_column(self, graph: ColumnGraph, ax: Axes) -> None:
         x = np.linspace(0, graph.table.ncols - 1, graph.table.ncols)
         y = self._prepare_column(graph)
         if graph._direction is ColumnGraphDirection.HORIZONTAL:
             x, y = y, x
-        ax.plot(x, y, *args, **kwargs, marker="o", color="k", ls="")
+        
+        for i, id in enumerate(graph.table.dataset_ids):
+            props = graph.plot_properties[id].point_kws()
+            props.update(**self.kw)
+            ax.plot(x[i], y[i], **props)
 
     @abstractmethod
     def _prepare_xy(self, graph: XYGraph, /,) -> DataFrame: ...
@@ -60,8 +53,8 @@ class Points(GraphComponent, ABC):
 
     @override
     @classmethod
-    def from_opt(cls, opt: PointsType, **_) -> Points:
-        return _FACTORY_MAP[opt]()
+    def from_opt(cls, opt: PointsType, kw, **_) -> Points:
+        return _FACTORY_MAP[opt](kw)
 
 
 class MeanPoints(Points):
@@ -102,45 +95,41 @@ class MedianPoints(Points):
 class IndividualPoints(Points):
 
     @override
-    def draw_xy(
-        self,
-        graph: XYGraph,
-        ax: Axes,
-        *args,
-        **kwargs,
-    ) -> None:
+    def draw_xy(self, graph: XYGraph, ax: Axes) -> None:
         # No aggregation
         x = graph.table.x_values
         if graph.table.n_x_replicates > 1:
             x = x.mean(axis=1)
-            logging.warn(
+            LOG.warn(
                 "Multiple X values are incompatible with individual points "
-                "and have been averaged.")
+                "and have been averaged."
+            )
         # Match y series dimensions
         x = np.tile(x.flatten(), graph.table.n_y_replicates)
 
         for id, dataset in graph.table.datasets_itertuples():
-            props = graph.plot_properties[id]
+            props = graph.plot_properties[id].point_kws()
+            props.update(**self.kw)
             y = dataset.y.T.flatten()
             assert len(x) == len(y)
-            artist, = ax.plot(x, y, *args, **kwargs,
-                              marker=props.marker, color=props.color, ls="")
+            artist, = ax.plot(x, y, **props)
             graph._add_legend_artist(id, artist)
 
     @override
-    def draw_column(
-        self,
-        graph: ColumnGraph,
-        ax: Axes,
-        *args,
-        **kwargs
-    ) -> None:
+    def draw_column(self, graph: ColumnGraph, ax: Axes) -> None:
         x = np.linspace(0, graph.table.ncols - 1, graph.table.ncols)
         x = np.repeat(x, graph.table.nrows)
         y = graph.table.values.flatten('F')
+
         if graph._direction is ColumnGraphDirection.HORIZONTAL:
             x, y = y, x
-        ax.plot(x, y, *args, **kwargs, marker="o", color="k", ls="")
+        
+        for i, id in enumerate(graph.table.dataset_ids):
+            props = graph.plot_properties[id].point_kws()
+            props.update(**self.kw)
+            x_slice = x[i*graph.table.nrows:(i+1)*graph.table.nrows]
+            y_slice = y[i*graph.table.nrows:(i+1)*graph.table.nrows]
+            ax.plot(x_slice, y_slice, **props)
 
     @override
     def _prepare_xy(self, _) -> Never:
@@ -154,13 +143,7 @@ class IndividualPoints(Points):
 class SwarmPoints(Points):
 
     @override
-    def draw_column(
-        self,
-        graph: ColumnGraph,
-        ax: Axes,
-        *args,
-        **kwargs
-    ) -> None:
+    def draw_column(self, graph: ColumnGraph, ax: Axes) -> None:
         x = np.linspace(0, graph.table.ncols - 1, graph.table.ncols)
         x = np.repeat(x, graph.table.nrows)
         y = graph.table.values.flatten('F')
@@ -170,8 +153,13 @@ class SwarmPoints(Points):
             x, y = y, x
         else:
             orient = "v"
-        sns.swarmplot(x=x, y=y, orient=orient, legend=False, ax=ax, color="k",
-                      size=3, *args, **kwargs)
+
+        for i, id in enumerate(graph.table.dataset_ids):
+            props = graph.plot_properties[id]
+            s = slice(i * graph.table.nrows, (i + 1) * graph.table.nrows)
+            sns.swarmplot(x=x[s], y=y[s], orient=orient, legend=False,
+                          ax=ax, **self.kw, marker=props.marker,
+                          color=props.color, size=props.markersize)
 
     @override
     def draw_xy(self, *args, **kwargs) -> Never:

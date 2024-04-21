@@ -6,9 +6,9 @@ from pathlib import Path
 import json
 import tomllib
 from typing import Any, Self
-import logging
 
 from ._schema import SCHEMA, Param
+from scigraph._log import LOG
 
 
 DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.joinpath("default.toml")
@@ -84,7 +84,7 @@ class DefaultsConfiguration:
         if valid:
             return
         for error in errors:
-            logging.error(str(error))
+            LOG.error(str(error))
         raise RuntimeError("Invalid Configuration File")
 
     def _validate(

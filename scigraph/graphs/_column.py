@@ -29,6 +29,7 @@ class ColumnGraph(Graph[ColumnTable]):
         self._direction = ColumnGraphDirection.from_str(direction)
         self._init_axis(table.dataset_ids)
         self._link_table(table)
+        self._compile_plot_properties()
 
     def _init_axis(self, dataset_ids: list[str]) -> None:
         if self._direction is ColumnGraphDirection.VERTICAL:
@@ -52,48 +53,51 @@ class ColumnGraph(Graph[ColumnTable]):
     def add_points(
         self,
         ty: Literal["mean", "geometric mean", "median", "individual", "swarm"],
+        **plot_kw,
     ) -> Self:
-        self._register_component(ty, PointsType, Points)
+        self._register_component(ty, PointsType, Points, plot_kw)
         return self
         
     def add_errorbars(
         self,
         ty: Literal["sd", "geometric sd", "sem", "ci95", "range"],
+        **plot_kw,
     ) -> Self:
-        self._register_component(ty, ErrorbarType, ErrorBars)
+        self._register_component(ty, ErrorbarType, ErrorBars, plot_kw)
         return self
 
     def add_connecting_line(
         self,
         ty: Literal["mean", "geometric mean", "median", "individual"],
         *,
-        join_nan: bool = False
+        join_nan: bool = False,
+        **plot_kw,
     ) -> Self:
         self._register_component(
-            ty, ConnectingLineType, ConnectingLine, join_nan=join_nan
+            ty, ConnectingLineType, ConnectingLine, plot_kw, join_nan=join_nan
         )
         return self
         
     def add_bars(
         self,
-        ty: Literal["mean", "median", "geometric mean"]
+        ty: Literal["mean", "median", "geometric mean"],
+        **plot_kw,
     ) -> Self:
-        self._register_component(ty, BarType, Bars)
+        self._register_component(ty, BarType, Bars, plot_kw)
         return self
 
     def add_lines(
         self,
-        ty: Literal["mean", "median", "geometric mean"]
+        ty: Literal["mean", "median", "geometric mean"],
+        **plot_kw,
     ) -> Self:
-        self._register_component(ty, LineType, Bars, line_only=True)
+        self._register_component(ty, LineType, Bars, plot_kw, line_only=True)
         return self
 
     @override
     def draw(self, ax: Optional[Axes] = None) -> Axes:
         if ax is None:
             ax = plt.gca()
-
-        self._compile_plot_properties()
 
         self.xaxis._format_axes(ax)
         self.yaxis._format_axes(ax)
