@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from itertools import cycle
-from typing import Any, Optional, Self, TYPE_CHECKING
+from typing import Any, Self, TYPE_CHECKING
 
 from scigraph.analyses.abc import GraphableAnalysis
 from scigraph.config import SG_DEFAULTS
@@ -57,12 +57,13 @@ class Graph[T: DataTable](ABC):
 
         schema_key = f"graphs.{self._schema_access_key()}"
         props = SG_DEFAULTS[schema_key]
-        static_props = {k: v for k, v in props.items() if k != "cycle"}
-        cycles = [cycle(p) for p in props["cycle"].values()]
+        static_props = {k: v for k, v in props.items()
+                        if not isinstance(v, list)}
+        cycles = {k: cycle(v) for k, v in props.items() if isinstance(v, list)}
         dataset_props = {}
 
-        for ds_id, *p in zip(self.table.dataset_ids, *cycles):
-            cyclic_props = dict(zip(props["cycle"].keys(), p))
+        for ds_id, *p in zip(self.table.dataset_ids, *cycles.values()):
+            cyclic_props = dict(zip(cycles.keys(), p))
             dataset_props[ds_id] = PlotProps(**static_props, **cyclic_props)
         
         self._plot_properties = dataset_props

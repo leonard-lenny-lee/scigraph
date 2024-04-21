@@ -120,27 +120,35 @@ class DefaultsConfiguration:
                 continue
 
             assert isinstance(schema_val, Param)
+
             # Terminal node
-            # Ensure type is correct
-            if not isinstance(d_val, schema_val.ty):
-                errors.append(
-                    InvalidParamType(
-                        param_name=key_path,
-                        expected_type=schema_val.ty,
-                        provided_type=type(d_val)
+            # Put values in a list to handle variadic configuration fields
+            if schema_val.variadic and isinstance(d_val, list):
+                to_check = d_val
+            else:
+                to_check = [d_val]
+
+            for item in to_check:
+                # Ensure type is correct
+                if not isinstance(item, schema_val.ty):
+                    errors.append(
+                        InvalidParamType(
+                            param_name=key_path,
+                            expected_type=schema_val.ty,
+                            provided_type=type(item)
+                        )
                     )
-                )
-                continue
-            # Ensure value is valid
-            if schema_val.opt is not None and d_val not in schema_val.opt:
-                errors.append(
-                    InvalidParamValue(
-                        param_name=key_path,
-                        provided_value=d_val,
-                        valid_values=schema_val.opt,
+                    continue
+                # Ensure value is valid
+                if schema_val.opt is not None and item not in schema_val.opt:
+                    errors.append(
+                        InvalidParamValue(
+                            param_name=key_path,
+                            provided_value=item,
+                            valid_values=schema_val.opt,
+                        )
                     )
-                )
-            # Passed all validation checks
+                # Passed all validation checks
 
         # Check for unknown parameters
         unknown_keys = d.keys() - schema_d.keys()

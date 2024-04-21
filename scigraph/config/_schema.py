@@ -6,6 +6,7 @@ from typing import Any, NamedTuple
 class Param[T](NamedTuple):
 
     ty: type[T] | tuple[type[T], ...]
+    variadic: bool = False
     opt: set[T] | None = None
 
     def validate(self, arg: Any) -> bool:
@@ -23,33 +24,24 @@ String = Param(str)
 Int = Param(int)
 Float = Param(float)
 Num = Param((int, float))
-Array = Param(list)
+
+VString = Param(str, variadic=True)
+VNum = Param((int, float), variadic=True)
 
 type Schema = dict[str, Param | Schema]
 
-GRAPH_T_SCHEMA: Schema = {
-    "cycle": {
-        "color": Array,
-        "ls": Array,
-        "marker": Array,
-    },
-    "linewidth": Num,
-    "markersize": Num,
-    "capsize": Num,
-    "capthickness": Num
-}
 
 TEXT_SCHEMA: Schema = {
     "size": Num,
-    "weight": Param((int, float, str), None),
+    "weight": Param((int, float, str)),
     "color": String,
     "spacing_before": Num,
     "spacing_after": Num,
     "linespacing": Num,
     "vertical_alignment": Param(
-        str, {"top", "bottom", "baseline", "center", "center_baseline"}
+        str, opt={"top", "bottom", "baseline", "center", "center_baseline"}
     ),
-    "horizontal_alignment": Param(str, {"left", "right", "center"}),
+    "horizontal_alignment": Param(str, opt={"left", "right", "center"}),
 }
 
 LINE_SCHEMA: Schema = {
@@ -72,21 +64,37 @@ SCHEMA: Schema = {
         }
     },
     "graphs": {
-        "xy": GRAPH_T_SCHEMA,
-        "column": GRAPH_T_SCHEMA,
+        "xy": {
+            "color": VString,
+            "ls": VString,
+            "marker": VString,
+            "linewidth": VNum,
+            "markersize": VNum,
+            "capsize": VNum,
+            "capthickness": VNum
+        },
+        "column": {
+            "color": VString,
+            "ls": VString,
+            "marker": VString,
+            "linewidth": VNum,
+            "markersize": VNum,
+            "capsize": VNum,
+            "capthickness": VNum
+        },
         "axis": {
             "continuous": {
-                "scale": Param(str, {"linear", "log10"}),
+                "scale": Param(str, opt={"linear", "log10"}),
                 "format": {
-                    "linear": Param(str, {"decimal", "power10", "antilog"}),
-                    "log10": Param(str, {"log10", "power10", "antilog"})
+                    "linear": Param(str, opt={"decimal", "power10", "antilog"}),
+                    "log10": Param(str, opt={"log10", "power10", "antilog"})
                 }
             }
         }
     },
     "layout": {
         "caption": {
-            "direction": Param(str, {"down", "up"}),
+            "direction": Param(str, opt={"down", "up"}),
             "pad": {
                 "top": Num,
                 "left": Num,
