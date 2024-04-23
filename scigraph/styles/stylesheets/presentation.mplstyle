@@ -8,8 +8,6 @@ figure.dpi: 150
 figure.constrained_layout.use: True
 figure.constrained_layout.h_pad: 0.1
 figure.constrained_layout.w_pad: 0.1
-figure.titlesize: 10
-figure.titleweight: bold
 
 savefig.dpi: 300
 savefig.bbox: tight
@@ -25,7 +23,6 @@ xtick.minor.visible: False
 ytick.left: False
 ytick.labelsize: 8
 
-axes.prop_cycle: cycler('color', ['016899', '00c4d5', 'fd4332', 'ff8872'])
 axes.labelsize: 8
 axes.linewidth: 1.0
 axes.autolimit_mode: round_numbers
@@ -43,10 +40,6 @@ axes.grid: True
 axes.grid.axis: y
 grid.linewidth: 0.5
 axes.axisbelow: True
-
-lines.linewidth: 0.5
-lines.markersize: 3
-lines.markeredgewidth: 0.5
 
 legend.frameon: True
 legend.fontsize: 8

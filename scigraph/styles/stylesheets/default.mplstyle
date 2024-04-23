@@ -25,15 +25,9 @@ ytick.major.width: 1.0
 ytick.labelsize: 8
 ytick.minor.visible: False
 
-
-axes.prop_cycle: (cycler('color', ['016899', '00c4d5', 'fd4332', 'ff8872']) + cycler('ls', ['-', '--', ':', '-.']) + cycler('marker', ['o', 's', '^', 'x']))   
 axes.labelsize: 8
 axes.linewidth: 1.0
 axes.autolimit_mode: round_numbers
-
-lines.linewidth: 0.5
-lines.markersize: 3
-lines.markeredgewidth: 0.5
 
 axes.spines.top: False
 axes.spines.right: False
@@ -41,8 +35,6 @@ axes.spines.right: False
 legend.frameon: False
 legend.fontsize: 8
 legend.title_fontsize: 8
-
-errorbar.capsize: 2
 
 mathtext.default: regular
 # text.usetex: True

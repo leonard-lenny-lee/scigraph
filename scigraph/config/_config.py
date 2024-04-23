@@ -3,6 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
+import os
 import json
 import tomllib
 from typing import Any, Self
@@ -72,6 +73,44 @@ class DefaultsConfiguration:
             target = target[k]
         assert not isinstance(target[keys[-1]], dict)
         target[keys[-1]] = val
+
+    def load_toml(self, fp: str | Path) -> None:
+        fp = self._find_file(fp)
+        if fp.suffix != ".toml":
+            raise ValueError("Must be a TOML file")
+
+        with open(fp, "rb") as f:
+            d = tomllib.load(f)
+
+        errors: list[ConfigParseError] = []
+        self._validate(d, SCHEMA, errors, "")
+
+        error_count = 0
+        for error in errors:
+            match error:
+                case MissingParam(_):
+                    continue
+                case UnknownParam(k, _) | InvalidParamType(k, _, _) \
+                        | InvalidParamValue(k, _, _):
+                    LOG.warn(error)
+                    # Remove invalid configuration settings
+                    error_count += 1
+                    keys = k.split(".")
+                    d_ = d
+                    for k in keys[:-1]:
+                        d_ = d_[k]
+                    del d_[keys[-1]]
+
+        if error_count:
+            LOG.warn(f"{error_count} configuration options have been ignored.")
+
+        self._flatten(d, (d_flat := {}), "")
+
+        for kv in d_flat.items():
+            self.set(*kv)
+
+    def reset(self) -> None:
+        self._config = self._load_default()._config
 
     def _strict_validate(
         self,
@@ -160,8 +199,30 @@ class DefaultsConfiguration:
                 )
             )
 
+    def _find_file(self, fp: str | Path) -> Path:
+        # Look in current directory
+        p = Path(__file__).resolve().parent.joinpath(fp)
+        if os.path.isfile(p):
+            return p
+        # Interpret as absolute
+        p = Path(fp).absolute()
+        if os.path.isfile(p):
+            return p
+        raise FileExistsError(fp)
+
+    def _flatten(self, d: dict[str, Any], out: dict[str, Any], prefix: str) -> None:
+        if prefix != "":
+            prefix += '.'
+
+        for k, v in d.items():
+            key = prefix + k
+            if isinstance(v, dict):
+                self._flatten(v, out, key)
+                continue
+            out[key] = v
+
     @classmethod
-    def load_default(cls) -> Self:
+    def _load_default(cls) -> Self:
         return cls._from_toml(DEFAULT_CONFIG_PATH)
 
     @classmethod
@@ -198,4 +259,4 @@ class InvalidParamValue:
 
 type ConfigParseError = MissingParam | UnknownParam | InvalidParamType | InvalidParamValue
 
-SG_DEFAULTS = DefaultsConfiguration.load_default()
+SG_DEFAULTS = DefaultsConfiguration._load_default()
