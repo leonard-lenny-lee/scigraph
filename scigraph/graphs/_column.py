@@ -6,7 +6,9 @@ import matplotlib.pyplot as plt
 
 from scigraph.datatables import ColumnTable
 from scigraph.graphs.abc import Graph
-from scigraph.graphs._components import Points, ErrorBars, ConnectingLine, Bars
+from scigraph.graphs._components import (
+    Points, ErrorBars, ConnectingLine, Bars, BoxAndWhiskers
+)
 from scigraph.graphs._components.axis import ContinuousAxis, CategoricalAxis
 from scigraph._options import (
     ColumnGraphDirection, PointsType, ConnectingLineType, ErrorbarType,
@@ -92,6 +94,14 @@ class ColumnGraph(Graph[ColumnTable]):
         **plot_kw,
     ) -> Self:
         self._register_component(ty, LineType, Bars, plot_kw, line_only=True)
+        return self
+
+    def add_box_and_whiskers(
+        self,
+        whis: float | tuple[float, float] = 1.5,
+        **plot_kw
+    ) -> Self:
+        self._register_component("", None, BoxAndWhiskers, plot_kw, whis=whis)
         return self
 
     @override

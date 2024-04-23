@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from itertools import cycle
-from typing import Any, Self, TYPE_CHECKING
+from typing import Any, Optional, Self, TYPE_CHECKING
 
 from scigraph.analyses.abc import GraphableAnalysis
 from scigraph.config import SG_DEFAULTS
@@ -86,13 +86,16 @@ class Graph[T: DataTable](ABC):
     def _register_component(
         self,
         ty: str,
-        opt_t: type[Option],
+        opt_t: Optional[type[Option]],
         component_t: type[GraphComponent],
         kw: dict[str, Any],
         **kwargs,
     ) -> None:
-        opt = opt_t.from_str(ty)
-        component = component_t.from_opt(opt, kw, **kwargs)
+        if not opt_t:
+            component = component_t.from_opt(None, kw, **kwargs)
+        else:
+            opt = opt_t.from_str(ty)
+            component = component_t.from_opt(opt, kw, **kwargs)
         self._components.append(component)
 
     @classmethod

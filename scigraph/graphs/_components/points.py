@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import asdict
 from typing import Never, override, TYPE_CHECKING
 
 from matplotlib.axes import Axes

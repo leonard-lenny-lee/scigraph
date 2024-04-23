@@ -60,3 +60,26 @@ class PlotProps:
             "color": self.baredgecolor,
             "linewidth": self.baredgethickness,
         }
+
+    def box_and_whisker_kw(self) -> dict:
+        return {
+            "widths": self.barwidth,
+            "boxprops": {
+                "color": self.color,
+                "linewidth": self.baredgethickness,
+                 "linestyle": self.ls,
+            },
+            "whiskerprops": {
+                "color": self.color,
+                "linewidth": self.baredgethickness,
+            },
+            "flierprops": {
+                "marker": self.marker,
+                "color": self.color,
+                "markersize": self.markersize,
+            },
+            "medianprops": {
+                "color": self.baredgecolor,
+                "linewidth": self.baredgethickness,
+            }
+        }

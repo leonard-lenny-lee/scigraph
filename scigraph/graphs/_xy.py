@@ -6,10 +6,9 @@ import matplotlib.pyplot as plt
 
 from scigraph.datatables import XYTable
 from scigraph.graphs.abc import Graph
-from scigraph.graphs._components.points import Points
-from scigraph.graphs._components.errorbars import ErrorBars
-from scigraph.graphs._components.connecting_lines import ConnectingLine
-from scigraph.graphs._components.axis import ContinuousAxis
+from scigraph.graphs._components import (
+    Points, ErrorBars, ConnectingLine, ContinuousAxis
+)
 from scigraph._options import PointsType, ErrorbarType, ConnectingLineType
 
 if TYPE_CHECKING:
