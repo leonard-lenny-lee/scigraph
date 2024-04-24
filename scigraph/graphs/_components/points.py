@@ -11,7 +11,7 @@ import seaborn as sns
 
 from scigraph.graphs.abc import GraphComponent
 from scigraph._options import ColumnGraphDirection, PointsType
-import scigraph.analyses._agg as agg
+import scigraph.analyses._stats as sgstats
 from scigraph._log import LOG
 
 if TYPE_CHECKING:
@@ -60,35 +60,35 @@ class MeanPoints(Points):
 
     @override
     def _prepare_xy(self, graph: XYGraph) -> DataFrame:
-        return graph.table._reduce_by_row_dataset_column(agg.Basic.mean)
+        return graph.table.row_statistics_by_dataset(sgstats.Basic.mean)
 
     @override
     def _prepare_column(self, graph: ColumnGraph) -> NDArray:
-        return graph.table._reduce_by_column(agg.Basic.mean)
+        return graph.table._reduce_by_column(sgstats.Basic.mean)
 
 
 class GeometricMeanPoints(Points):
 
     @override
     def _prepare_xy(self, graph: XYGraph) -> DataFrame:
-        return graph.table._reduce_by_row_dataset_column(
-            agg.Advanced.geometric_mean
+        return graph.table.row_statistics_by_dataset(
+            sgstats.Advanced.geometric_mean
         )
 
     @override
     def _prepare_column(self, graph: ColumnGraph) -> NDArray:
-        return graph.table._reduce_by_column(agg.Advanced.geometric_mean)
+        return graph.table._reduce_by_column(sgstats.Advanced.geometric_mean)
 
 
 class MedianPoints(Points):
 
     @override
     def _prepare_xy(self, graph: XYGraph) -> DataFrame:
-        return graph.table._reduce_by_row_dataset_column(agg.Basic.median)
+        return graph.table.row_statistics_by_dataset(sgstats.Basic.median)
 
     @override
     def _prepare_column(self, graph: ColumnGraph) -> NDArray:
-        return graph.table._reduce_by_column(agg.Basic.median)
+        return graph.table._reduce_by_column(sgstats.Basic.median)
 
 
 class IndividualPoints(Points):

@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, auto
 from typing import Self
 
 
@@ -26,44 +26,75 @@ class Option(Enum):
                 f"Options: {opts}"
             )
 
+    @classmethod
+    def to_strs(cls) -> set[str]:
+        return set(cls.__members__.keys())
+
 
 # fmt: off
 ## Graph Configuration
 
 class ColumnGraphDirection(Option):
-    HORIZONTAL     = 0
-    VERTICAL       = 1
+    HORIZONTAL     = auto()
+    VERTICAL       = auto()
 
 
 ## Graph Components ##
 
 class PointsType(Option):
-    MEAN           = 0
-    GEOMETRIC_MEAN = 1
-    MEDIAN         = 2
-    INDIVIDUAL     = 3
-    SWARM          = 4
+    MEAN           = auto()
+    GEOMETRIC_MEAN = auto()
+    MEDIAN         = auto()
+    INDIVIDUAL     = auto()
+    SWARM          = auto()
 
 
 class ErrorbarType(Option):
-    SD             = 0
-    GEOMETRIC_SD   = 1
-    SEM            = 2
-    CI95           = 3
-    RANGE          = 4
+    SD             = auto()
+    GEOMETRIC_SD   = auto()
+    SEM            = auto()
+    CI95           = auto()
+    RANGE          = auto()
 
 
 class ConnectingLineType(Option):
-    MEAN           = 0
-    GEOMETRIC_MEAN = 1
-    MEDIAN         = 2
-    INDIVIDUAL     = 3
+    MEAN           = auto()
+    GEOMETRIC_MEAN = auto()
+    MEDIAN         = auto()
+    INDIVIDUAL     = auto()
 
 
 class BarType(Option):
-    MEAN           = 0
-    GEOMETRIC_MEAN = 1
-    MEDIAN         = 2
+    MEAN           = auto()
+    GEOMETRIC_MEAN = auto()
+    MEDIAN         = auto()
+
+
+## Analysis Configuration
+
+class RowStatisticsScope(Option):
+    ROW            = auto()
+    DATASET = auto()
+
+
+class SummaryStatistic(Option):
+    MEAN           = auto()
+    SD             = auto()
+    SEM            = auto()
+    SUM            = auto()
+    MIN            = auto()
+    MAX            = auto()
+    RANGE          = auto()
+    N              = auto()
+    LOWER_QUARTILE = auto()
+    UPPER_QUARTILE = auto()
+    MEDIAN         = auto()
+    CV             = auto()
+    SKEWNESS       = auto()
+    KURTOSIS       = auto()
+    GEOMETRIC_MEAN = auto()
+    GEOMETRIC_SD   = auto()
+    MEAN_CI        = auto()
 
 # fmt: on
 LineType = BarType

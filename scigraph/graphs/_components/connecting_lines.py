@@ -14,7 +14,7 @@ from pandas import DataFrame
 
 from scigraph.graphs.abc import GraphComponent
 from scigraph._options import ColumnGraphDirection, ConnectingLineType
-import scigraph.analyses._agg as agg
+import scigraph.analyses._stats as sgstats
 
 if TYPE_CHECKING:
     from scigraph.graphs import XYGraph, ColumnGraph
@@ -88,35 +88,35 @@ class MeanConnectingLine(ConnectingLine):
 
     @override
     def _prepare_xy(self, graph: XYGraph) -> DataFrame:
-        return graph.table._reduce_by_row_dataset_column(agg.Basic.mean)
+        return graph.table.row_statistics_by_dataset(sgstats.Basic.mean)
 
     @override
     def _prepare_column(self, graph: ColumnGraph) -> NDArray:
-        return graph.table._reduce_by_column(agg.Basic.mean)
+        return graph.table._reduce_by_column(sgstats.Basic.mean)
 
 
 class GeometricMeanConnectingLine(ConnectingLine):
 
     @override
     def _prepare_xy(self, graph: XYGraph) -> DataFrame:
-        return graph.table._reduce_by_row_dataset_column(
-            agg.Advanced.geometric_mean
+        return graph.table.row_statistics_by_dataset(
+            sgstats.Advanced.geometric_mean
         )
 
     @override
     def _prepare_column(self, graph: ColumnGraph) -> NDArray:
-        return graph.table._reduce_by_column(agg.Advanced.geometric_mean)
+        return graph.table._reduce_by_column(sgstats.Advanced.geometric_mean)
 
 
 class MedianConnectingLine(ConnectingLine):
 
     @override
     def _prepare_xy(self, graph: XYGraph) -> DataFrame:
-        return graph.table._reduce_by_row_dataset_column(agg.Basic.median)
+        return graph.table.row_statistics_by_dataset(sgstats.Basic.median)
 
     @override
     def _prepare_column(self, graph: ColumnGraph) -> NDArray:
-        return graph.table._reduce_by_column(agg.Basic.median)
+        return graph.table._reduce_by_column(sgstats.Basic.median)
 
 
 class IndividualConnectingLine(ConnectingLine):

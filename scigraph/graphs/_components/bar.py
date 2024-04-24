@@ -8,7 +8,7 @@ from numpy.typing import NDArray
 
 from scigraph.graphs.abc import GraphComponent
 from scigraph._options import ColumnGraphDirection, BarType
-import scigraph.analyses._agg as agg
+import scigraph.analyses._stats as sgstats
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
@@ -62,21 +62,21 @@ class MeanBars(Bars):
 
     @override
     def _prepare_column(self, graph: ColumnGraph) -> NDArray:
-        return graph.table._reduce_by_column(agg.Basic.mean)
+        return graph.table._reduce_by_column(sgstats.Basic.mean)
 
 
 class GeometricMeanBars(Bars):
 
     @override
     def _prepare_column(self, graph: ColumnGraph) -> NDArray:
-        return graph.table._reduce_by_column(agg.Advanced.geometric_mean)
+        return graph.table._reduce_by_column(sgstats.Advanced.geometric_mean)
 
 
 class MedianBars(Bars):
 
     @override
     def _prepare_column(self, graph: ColumnGraph) -> NDArray:
-        return graph.table._reduce_by_column(agg.Basic.median)
+        return graph.table._reduce_by_column(sgstats.Basic.median)
 
 
 _FACTORY_MAP = {

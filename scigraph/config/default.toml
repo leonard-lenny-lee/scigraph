@@ -30,7 +30,7 @@
   color = 'k'
   ls = '-'
   marker = 'o'
-  barcolor = ['dimgrey', 'lightgrey', 'darkgrey', 'whitesmoke']
+  barcolor = ['#016899', 'skyblue', 'steelblue', 'powderblue']
   barwidth = 0.5
   baredgecolor = 'k'
   baredgethickness = 1

@@ -1,14 +1,21 @@
-from typing import Callable, override
+from __future__ import annotations
+
+from typing import override, TYPE_CHECKING
 
 import numpy as np
-from numpy.typing import NDArray
-from pandas import DataFrame, MultiIndex
+from pandas import DataFrame, Index, MultiIndex
 
-from .abc import DataTable, DataSet
+from scigraph.datatables.abc import DataTable, DataSet
+from scigraph.analyses.abc import RowStatisticsI
 from scigraph.config import SG_DEFAULTS
 
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
-class XYTable(DataTable):
+    from scigraph.analyses._stats import SummaryStatArg
+
+
+class XYTable(DataTable, RowStatisticsI):
 
     def __init__(
         self,
@@ -113,14 +120,30 @@ class XYTable(DataTable):
             zip(self._dataset_names, range(self._n_datasets))
         )
 
-    def _reduce_by_row_dataset_column(
-        self,
-        f: Callable[..., float]
-    ) -> DataFrame:
-        out = self.as_df().T.groupby(level=0).agg(f)
-        # Transform shape back into original
-        cols = self._columns().unique(level=0)
-        return out.T.reindex(columns=cols)
+    ## Row Statistics Implementations ##
 
-    def _reduce_y_values_by_row(self, f: Callable[..., float]) -> NDArray:
-        return np.apply_along_axis(f, axis=1, arr=self.y_values)
+    @override
+    def row_statistics_by_row(
+        self,
+        fns: SummaryStatArg | list[SummaryStatArg],
+    ) -> DataFrame:
+        fns_ = self._row_statistics_normalize_fn_args(fns)
+        out = [np.apply_along_axis(fn, axis=1, arr=self.y_values) for fn in fns_]
+        out = np.vstack(out).T
+        columns = Index([fn.__name__ for fn in fns_], name=self.y_title)
+        index = Index(np.mean(self.x_values, axis=1), name=self.x_title)
+        return DataFrame(out, index, columns)
+
+    @override
+    def row_statistics_by_dataset(
+        self,
+        fns: SummaryStatArg | list[SummaryStatArg],
+    ) -> DataFrame:
+        fns_ = self._row_statistics_normalize_fn_args(fns)
+        out = self.as_df().T.groupby(level=0).aggregate(fns)
+        names = [fn.__name__ for fn in fns_]
+        out = out.reorder_levels([1, 0], axis=1)[names].T  # type: ignore
+        if len(fns_) == 1:
+            out = out.loc[names[0]]
+        out = out.reindex(columns=self._columns().unique(level=0))
+        return out

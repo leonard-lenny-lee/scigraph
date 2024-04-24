@@ -1,6 +1,11 @@
+"""Descriptive statistics functions"""
+
+from typing import Callable
 import numpy as np
 from numpy.typing import NDArray
 from scipy.stats import t
+
+from scigraph._options import SummaryStatistic
 
 
 class Basic:
@@ -30,7 +35,7 @@ class Basic:
         return np.nanmax(arr)
     
     @staticmethod
-    def range_(arr: NDArray) -> float:
+    def range(arr: NDArray) -> float:
         return np.nanmax(arr) - np.nanmin(arr)
     
     @staticmethod
@@ -84,3 +89,34 @@ class ConfidenceInterval:
         n = np.count_nonzero(arr)
         critical_val = t.ppf((1 + level) / 2, n - 1)
         return critical_val * np.nanstd(arr) / n ** 0.5
+
+
+type SummaryStatFn = Callable[[NDArray], float]
+type SummaryStatArg = SummaryStatFn | str
+
+def get_summary_statistic_fn(stat: SummaryStatistic | str) -> SummaryStatFn:
+    if isinstance(stat, str):
+        stat = SummaryStatistic.from_str(stat)
+    if stat in FN_MAP:
+        return FN_MAP[stat]
+    raise NotImplementedError
+
+
+FN_MAP: dict[SummaryStatistic, SummaryStatFn] = {
+    SummaryStatistic.MEAN: Basic.mean,
+    SummaryStatistic.SD: Basic.sd,
+    SummaryStatistic.SEM: Basic.sem,
+    SummaryStatistic.SUM: Basic.sum,
+    SummaryStatistic.MIN: Basic.min,
+    SummaryStatistic.MAX: Basic.max,
+    SummaryStatistic.RANGE: Basic.range,
+    SummaryStatistic.N: Basic.n,
+    SummaryStatistic.LOWER_QUARTILE: Basic.lower_quartile,
+    SummaryStatistic.UPPER_QUARTILE: Basic.upper_quartile,
+    SummaryStatistic.MEDIAN: Basic.median,
+    SummaryStatistic.CV: Advanced.coefficient_of_variation,
+    SummaryStatistic.SKEWNESS: Advanced.skewness,
+    SummaryStatistic.GEOMETRIC_MEAN: Advanced.geometric_mean,
+    SummaryStatistic.GEOMETRIC_SD: Advanced.geometric_sd,
+    SummaryStatistic.MEAN_CI: ConfidenceInterval.mean,
+}
