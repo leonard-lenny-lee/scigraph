@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Literal, TYPE_CHECKING, override
+from typing import Literal, TYPE_CHECKING, override
 
 from scigraph.analyses.abc import Analysis
 from scigraph.analyses._stats import get_summary_statistic_fn
@@ -23,10 +23,12 @@ class RowStatistics(Analysis):
         self,
         table: DataTableRS,
         scope: Literal["row", "dataset column"],
+        *stats: str,
     ) -> None:
         self._table = table
         self._scope = RowStatisticsScope.from_str(scope)
         self._statistics: list[SummaryStatistic] = []
+        self.add_statistics(*stats)
 
     def add_statistics(self, *stats: str) -> None:
         for stat in stats:
@@ -38,9 +40,9 @@ class RowStatistics(Analysis):
     def analyze(self) -> DataFrame:
         fns = [get_summary_statistic_fn(s) for s in self._statistics]
         if self._scope is RowStatisticsScope.DATASET:
-            out = self.table.row_statistics_by_dataset(fns)
+            out = self.table.row_statistics_by_dataset(*fns)
         else:  # Entire row
-            out = self.table.row_statistics_by_row(fns)
+            out = self.table.row_statistics_by_row(*fns)
         return out
 
     @property

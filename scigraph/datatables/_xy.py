@@ -7,6 +7,7 @@ from pandas import DataFrame, Index, MultiIndex
 
 from scigraph.datatables.abc import DataTable, DataSet
 from scigraph.analyses.abc import RowStatisticsI
+from scigraph.analyses._stats import normalize_fn_args
 from scigraph.config import SG_DEFAULTS
 
 if TYPE_CHECKING:
@@ -120,14 +121,9 @@ class XYTable(DataTable, RowStatisticsI):
             zip(self._dataset_names, range(self._n_datasets))
         )
 
-    ## Row Statistics Implementations ##
-
     @override
-    def row_statistics_by_row(
-        self,
-        fns: SummaryStatArg | list[SummaryStatArg],
-    ) -> DataFrame:
-        fns_ = self._row_statistics_normalize_fn_args(fns)
+    def row_statistics_by_row(self, *fns: SummaryStatArg) -> DataFrame:
+        fns_ = normalize_fn_args(*fns)
         out = [np.apply_along_axis(fn, axis=1, arr=self.y_values) for fn in fns_]
         out = np.vstack(out).T
         columns = Index([fn.__name__ for fn in fns_], name=self.y_title)
@@ -135,11 +131,8 @@ class XYTable(DataTable, RowStatisticsI):
         return DataFrame(out, index, columns)
 
     @override
-    def row_statistics_by_dataset(
-        self,
-        fns: SummaryStatArg | list[SummaryStatArg],
-    ) -> DataFrame:
-        fns_ = self._row_statistics_normalize_fn_args(fns)
+    def row_statistics_by_dataset(self, *fns: SummaryStatArg) -> DataFrame:
+        fns_ = normalize_fn_args(*fns)
         out = self.as_df().T.groupby(level=0).aggregate(fns)
         names = [fn.__name__ for fn in fns_]
         out = out.reorder_levels([1, 0], axis=1)[names].T  # type: ignore

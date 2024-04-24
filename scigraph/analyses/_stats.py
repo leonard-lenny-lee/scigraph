@@ -94,12 +94,23 @@ class ConfidenceInterval:
 type SummaryStatFn = Callable[[NDArray], float]
 type SummaryStatArg = SummaryStatFn | str
 
+
 def get_summary_statistic_fn(stat: SummaryStatistic | str) -> SummaryStatFn:
     if isinstance(stat, str):
         stat = SummaryStatistic.from_str(stat)
     if stat in FN_MAP:
         return FN_MAP[stat]
     raise NotImplementedError
+
+
+def normalize_fn_args(*args: SummaryStatArg) -> list[SummaryStatFn]:
+    out = []
+    for arg in args:
+        if isinstance(arg, str):
+            out.append(get_summary_statistic_fn(arg))
+        else:
+            out.append(arg)
+    return out
 
 
 FN_MAP: dict[SummaryStatistic, SummaryStatFn] = {

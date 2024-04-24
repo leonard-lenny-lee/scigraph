@@ -5,9 +5,7 @@ from typing import Any, TYPE_CHECKING
 
 from matplotlib.axes import Axes
 
-from scigraph.analyses._stats import (
-    SummaryStatArg, SummaryStatFn, get_summary_statistic_fn
-)
+from scigraph.analyses._stats import SummaryStatArg
 
 if TYPE_CHECKING:
     from pandas import DataFrame
@@ -41,23 +39,13 @@ class GraphableAnalysis[T: DataTable, G: Graph](Analysis[T], ABC):
 class RowStatisticsI(ABC):
 
     @abstractmethod
-    def row_statistics_by_row(
-        self,
-        fns: SummaryStatArg | list[SummaryStatArg],
-    ) -> DataFrame: ...
+    def row_statistics_by_row(self, *fns: SummaryStatArg) -> DataFrame: ...
 
     @abstractmethod
-    def row_statistics_by_dataset(
-        self,
-        fns: SummaryStatArg | list[SummaryStatArg],
-    ) -> DataFrame: ...
+    def row_statistics_by_dataset(self, *fns: SummaryStatArg) -> DataFrame: ...
 
-    def _row_statistics_normalize_fn_args(
-        self,
-        fns: SummaryStatArg | list[SummaryStatArg],
-    ) -> list[SummaryStatFn]:
-        if not isinstance(fns, list):
-            fns = [fns]
-        out = [get_summary_statistic_fn(fn) if isinstance(fn, str) else fn
-               for fn in fns]
-        return out
+
+class DescriptiveStatisticsI(ABC):
+
+    @abstractmethod
+    def descriptive_statistics(self, *fns: SummaryStatArg) -> DataFrame: ...

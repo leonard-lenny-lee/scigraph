@@ -1,16 +1,22 @@
 from __future__ import annotations
 
-from typing import Callable, override
+from typing import Callable, override, TYPE_CHECKING
 
 import numpy as np
-from numpy.typing import NDArray
 from pandas import DataFrame, Index
 
-from .abc import DataSet, DataTable
+from scigraph.datatables.abc import DataSet, DataTable
+from scigraph.analyses.abc import DescriptiveStatisticsI
+from scigraph.analyses._stats import normalize_fn_args
 from scigraph.config import SG_DEFAULTS
 
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
-class ColumnTable(DataTable):
+    from scigraph.analyses._stats import SummaryStatArg
+
+
+class ColumnTable(DataTable, DescriptiveStatisticsI):
     
     def __init__(self, values: NDArray) -> None:
         values = self._sanitize_values(values)
@@ -70,3 +76,12 @@ class ColumnTable(DataTable):
 
     def _reduce_by_column(self, f: Callable[..., float]) -> NDArray:
         return np.apply_along_axis(f, axis=0, arr=self._values)
+
+    @override
+    def descriptive_statistics(self, *fns: SummaryStatArg) -> DataFrame:
+        fns_ = normalize_fn_args(*fns)
+        out = [np.apply_along_axis(fn, axis=0, arr=self.values) for fn in fns_]
+        out = np.vstack(out)
+        columns = Index(self.dataset_ids, name=self.x_title)
+        index = Index([fn.__name__ for fn in fns_])
+        return DataFrame(out, index, columns)
