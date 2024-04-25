@@ -8,6 +8,10 @@
   x_title = "X"
   y_title = "Y"
 
+  [datatables.grouped]
+  x_title = "X"
+  y_title = "Y"
+
 
 [graphs]
 
@@ -16,17 +20,17 @@
   linewidth = 1
   markersize = 3
   capsize = 2
-  capthickness = 0.5
+  capthickness = 1
   color = ['#016899', '#00c4d5', '#fd4332', '#ff8872']
   ls = '-'
   marker = ['o', 's', '^', 'x']
 
   [graphs.column]
   
-  linewidth = 0.5
+  linewidth = 1
   markersize = 3
   capsize = 5
-  capthickness = 0.5
+  capthickness = 1
   color = 'k'
   ls = '-'
   marker = 'o'

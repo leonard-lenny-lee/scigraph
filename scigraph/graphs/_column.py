@@ -110,9 +110,6 @@ class ColumnGraph(Graph[ColumnTable]):
         if ax is None:
             ax = plt.gca()
 
-        self.xaxis._format_axes(ax)
-        self.yaxis._format_axes(ax)
-
         for artist in self._components:
             artist.draw_column(self, ax)
 
@@ -121,6 +118,9 @@ class ColumnGraph(Graph[ColumnTable]):
 
         if self.include_legend:
             self._compose_legend(ax)
+
+        self.xaxis._format_axes(ax)
+        self.yaxis._format_axes(ax)
 
         return ax
 

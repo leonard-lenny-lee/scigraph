@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal, override, TYPE_CHECKING
+from typing import Literal, Optional, override, TYPE_CHECKING
 
 import numpy as np
 from pandas import DataFrame, Index, MultiIndex
@@ -10,7 +10,7 @@ from scigraph.analyses.abc import RowStatsI
 from scigraph.config import SG_DEFAULTS
 
 if TYPE_CHECKING:
-    from numpy.typing import NDArray
+    from numpy.typing import NDArray, ArrayLike
 
     from scigraph.analyses._stats import SummaryStatFn
     from scigraph.analyses import RowStatistics
@@ -18,13 +18,17 @@ if TYPE_CHECKING:
 
 
 class XYTable(DataTable, RowStatsI):
+    """
+    Each point is definted by an X and Y coordinate.
+    """
 
     def __init__(
         self,
-        values: NDArray,
+        values: ArrayLike,
         n_x_replicates: int,
         n_y_replicates: int,
         n_datasets: int,
+        dataset_names: Optional[list[str]] = None
     ) -> None:
         values = self._sanitize_values(values)
         expected_ncols = n_x_replicates + n_y_replicates * n_datasets
@@ -36,7 +40,10 @@ class XYTable(DataTable, RowStatsI):
         self._n_x_replicates = n_x_replicates
         self._n_y_replicates = n_y_replicates
         self._n_datasets = n_datasets
-        self._dataset_names = self._default_names(n_datasets)
+
+        if dataset_names is None:
+            dataset_names = self._default_names(n_datasets)
+        self._dataset_names = dataset_names
 
         self.x_title: str = SG_DEFAULTS["datatables.xy.x_title"]
         self.y_title: str = SG_DEFAULTS["datatables.xy.y_title"]
@@ -95,14 +102,7 @@ class XYTable(DataTable, RowStatsI):
 
     @dataset_names.setter
     def dataset_names(self, names: list[str]) -> None:
-        contains_duplicates = len(names) != len(set(names))
-        incorrect_len = len(names) != self._n_datasets
-
-        if contains_duplicates:
-            raise ValueError("Duplicate dataset names not allowed.")
-        if incorrect_len:
-            raise ValueError("Inappropriate number of names provided")
-
+        self._verify_names(names, self._n_datasets)
         self._dataset_names = names
         self._generate_dataset_index_map()
 

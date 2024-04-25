@@ -61,6 +61,10 @@ SCHEMA: Schema = {
         "column": {
             "x_title": String,
             "y_title": String,
+        },
+        "grouped": {
+            "x_title": String,
+            "y_title": String,
         }
     },
     "graphs": {

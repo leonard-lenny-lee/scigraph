@@ -33,6 +33,16 @@ class Graph[T: DataTable](ABC):
     def table(self) -> T:
         return self._table
 
+    @property
+    def title(self) -> str:
+        if not hasattr(self, "_title"):
+            self._title = self.table.title
+        return self._title
+
+    @title.setter
+    def title(self, val: str) -> None:
+        self._title = val
+
     def link_analysis(self, analysis: GraphableAnalysis) -> Self:
         if not isinstance(analysis, GraphableAnalysis):
             raise TypeError(f"{type(analysis).__name__} is not graphable.")

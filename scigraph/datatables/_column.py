@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Literal, override, TYPE_CHECKING
+from typing import Callable, Literal, Optional, override, TYPE_CHECKING
 
 import numpy as np
 from pandas import DataFrame, Index
@@ -10,7 +10,7 @@ from scigraph.analyses.abc import DescStatsI
 from scigraph.config import SG_DEFAULTS
 
 if TYPE_CHECKING:
-    from numpy.typing import NDArray
+    from numpy.typing import ArrayLike
 
     from scigraph.analyses import DescriptiveStatistics
     from scigraph.analyses._stats import SummaryStatFn
@@ -18,15 +18,26 @@ if TYPE_CHECKING:
 
 
 class ColumnTable(DataTable, DescStatsI):
+    """
+    Column tables have one grouping variable, with each group defined by
+    a column.
+    """
     
-    def __init__(self, values: NDArray) -> None:
+    def __init__(
+        self,
+        values: ArrayLike,
+        dataset_names: Optional[list[str]] = None
+    ) -> None:
         values = self._sanitize_values(values)
         _, n_cols = values.shape
 
         # Protected attributes
         self._values = values
         self._n_datasets = n_cols
-        self._dataset_names = self._default_names(n_cols)
+
+        if dataset_names is None:
+            dataset_names = self._default_names(n_cols)
+        self._dataset_names = dataset_names
 
         self.x_title: str = SG_DEFAULTS["datatables.column.x_title"]
         self.y_title: str = SG_DEFAULTS["datatables.column.y_title"]
@@ -65,14 +76,7 @@ class ColumnTable(DataTable, DescStatsI):
 
     @dataset_names.setter
     def dataset_names(self, names: list[str]) -> None:
-        contains_duplicates = len(names) != len(set(names))
-        incorrect_len = len(names) != self._n_datasets
-
-        if contains_duplicates:
-            raise ValueError("Duplicate dataset names not allowed.")
-        if incorrect_len:
-            raise ValueError("Inappropriate number of names provided")
-
+        self._verify_names(names, self._n_datasets)
         self._dataset_names = names
 
     def _reduce_by_column(self, f: Callable[..., float]) -> NDArray:
