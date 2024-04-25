@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Literal, Optional, override
 
 from matplotlib.axes import Axes
+import numpy as np
 
 from .._formatters import TICK_FORMATTERS
 from scigraph.config import SG_DEFAULTS
@@ -107,25 +108,34 @@ class CategoricalAxis(SGAxis):
         axis: Literal["x", "y"],
         categories: list[str],
         title: str = "",
+        repeats: int = 1,
     ) -> None:
         self._axis = self._Axis.from_str(axis)
         self._categories = categories
+        self._repeats = repeats
         self.title = title
 
     @override
     def _format_axes(self, ax: Axes) -> None:
         n_categories = len(self._categories)
-        ticks = list(range(n_categories))
+        ticks = np.array(range(n_categories))
+        ticks = np.hstack(
+            [ticks + i * (n_categories + 1) for i in range(self._repeats)]
+        )
+        categories = np.array(self._categories)
+        categories = np.hstack([categories for _ in range(self._repeats)])
+
         lims = ticks[0] - 0.49, ticks[-1] + 0.49
 
         if self._axis is self._Axis.X:
             axis = ax.xaxis
             ax.set_xlim(*lims)
             ax.set_xlabel(self.title)
+            rotation = 45
         else:  # Y Axis
             axis = ax.yaxis
             ax.set_ylim(*lims)
             ax.set_ylabel(self.title)
+            rotation = 0
 
-        axis.set_ticks(ticks, self._categories)
-
+        axis.set_ticks(ticks, categories, rotation=rotation, ha="right")

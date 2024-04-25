@@ -144,18 +144,11 @@ class XYTable(DataTable, RowStatsI):
 
     @override
     def _row_statistics_by_row(self, *fns: SummaryStatFn) -> DataFrame:
-        out = [np.apply_along_axis(fn, axis=1, arr=self.y_values) for fn in fns]
-        out = np.vstack(out).T
-        columns = Index([fn.__name__ for fn in fns], name=self.y_title)
-        index = Index(np.mean(self.x_values, axis=1), name=self.x_title)
-        return DataFrame(out, index, columns)
+        x = np.mean(self.x_values, axis=1)
+        df = self.as_df()[self._dataset_names]
+        df.index = x
+        return RowStatsI._row_reduction(df, *fns)  # type: ignore
 
     @override
     def _row_statistics_by_dataset(self, *fns: SummaryStatFn) -> DataFrame:
-        out = self.as_df().T.groupby(level=0).aggregate(fns)
-        names = [fn.__name__ for fn in fns]
-        out = out.reorder_levels([1, 0], axis=1)[names].T  # type: ignore
-        if len(fns) == 1:
-            out = out.loc[names[0]]
-        out = out.reindex(columns=self._columns().unique(level=0))
-        return out
+        return RowStatsI._dataset_reduction(self.as_df(), *fns)

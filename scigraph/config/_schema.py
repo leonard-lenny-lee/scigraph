@@ -90,6 +90,15 @@ SCHEMA: Schema = {
             "baredgecolor": VString,
             "baredgethickness": VNum,
         },
+        "grouped": {
+            "color": VString,
+            "ls": VString,
+            "marker": VString,
+            "linewidth": VNum,
+            "markersize": VNum,
+            "capsize": VNum,
+            "capthickness": VNum
+        },
         "axis": {
             "continuous": {
                 "scale": Param(str, opt={"linear", "log10"}),

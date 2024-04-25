@@ -39,6 +39,14 @@ class ColumnGraphDirection(Option):
     VERTICAL       = auto()
 
 
+GroupedGraphDirection = ColumnGraphDirection
+
+class GroupedGraphGrouping(Option):
+    INTERLEAVED    = auto()
+    SEPARATED      = auto()
+    STACKED        = auto()
+
+
 ## Graph Components ##
 
 class PointsType(Option):

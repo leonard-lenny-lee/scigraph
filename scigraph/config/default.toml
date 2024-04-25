@@ -39,6 +39,16 @@
   baredgecolor = 'k'
   baredgethickness = 1
 
+  [graphs.grouped]
+  
+  linewidth = 1
+  markersize = 3
+  capsize = 2
+  capthickness = 1
+  color = ['#016899', '#00c4d5', '#fd4332', '#ff8872']
+  ls = '-'
+  marker = ['o', 's', '^', 'x']
+
   [graphs.axis]
 
     [graphs.axis.continuous]

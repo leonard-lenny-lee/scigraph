@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from matplotlib.axes import Axes
 
     from scigraph.datatables.abc import DataTable
-    from scigraph.graphs import XYGraph, ColumnGraph
+    from scigraph.graphs import XYGraph, ColumnGraph, GroupedGraph
     from scigraph._options import Option
 
 
@@ -123,6 +123,9 @@ class GraphComponent(ABC):
 
     @abstractmethod
     def draw_column(self, graph: ColumnGraph, ax: Axes) -> None: ...
+
+    # @abstractmethod
+    def draw_grouped(self, graph: GroupedGraph, ax: Axes) -> None: ...
 
     @classmethod
     @abstractmethod

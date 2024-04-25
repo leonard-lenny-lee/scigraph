@@ -1,17 +1,21 @@
 from __future__ import annotations
 
-from typing import Optional, override, TYPE_CHECKING
+from typing import Literal, Optional, override, TYPE_CHECKING
 
 from pandas import DataFrame, Index, MultiIndex
 
 from scigraph.datatables.abc import DataSet, DataTable
+from scigraph.analyses.abc import RowStatsI
 from scigraph.config import SG_DEFAULTS
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray, ArrayLike
 
+    from scigraph.analyses._stats import SummaryStatFn
+    from scigraph.analyses import RowStatistics
 
-class GroupedTable(DataTable):
+
+class GroupedTable(DataTable, RowStatsI):
     """
     Grouped tables have two grouping variables, one defined by columns and the
     other defined by rows.
@@ -92,3 +96,21 @@ class GroupedTable(DataTable):
     def row_names(self, names: list[str]) -> None:
         self._verify_names(names, self.nrows)
         self._row_names = names
+
+    ## Analysis factories and implementations ##
+
+    def row_statistics(
+        self,
+        scope: Literal["row", "dataset"],
+        *stats: str
+    ) -> RowStatistics:
+        from scigraph.analyses import RowStatistics
+        return RowStatistics(self, scope, *stats)
+
+    @override
+    def _row_statistics_by_row(self, *fns: SummaryStatFn) -> DataFrame:
+        return RowStatsI._row_reduction(self.as_df(), *fns)
+
+    @override
+    def _row_statistics_by_dataset(self, *fns: SummaryStatFn) -> DataFrame:
+        return RowStatsI._dataset_reduction(self.as_df(), *fns)
