@@ -88,7 +88,7 @@ class MeanConnectingLine(ConnectingLine):
 
     @override
     def _prepare_xy(self, graph: XYGraph) -> DataFrame:
-        return graph.table.row_statistics_by_dataset(sgstats.Basic.mean)
+        return graph.table._row_statistics_by_dataset(sgstats.Basic.mean)
 
     @override
     def _prepare_column(self, graph: ColumnGraph) -> NDArray:
@@ -99,7 +99,7 @@ class GeometricMeanConnectingLine(ConnectingLine):
 
     @override
     def _prepare_xy(self, graph: XYGraph) -> DataFrame:
-        return graph.table.row_statistics_by_dataset(
+        return graph.table._row_statistics_by_dataset(
             sgstats.Advanced.geometric_mean
         )
 
@@ -112,7 +112,7 @@ class MedianConnectingLine(ConnectingLine):
 
     @override
     def _prepare_xy(self, graph: XYGraph) -> DataFrame:
-        return graph.table.row_statistics_by_dataset(sgstats.Basic.median)
+        return graph.table._row_statistics_by_dataset(sgstats.Basic.median)
 
     @override
     def _prepare_column(self, graph: ColumnGraph) -> NDArray:

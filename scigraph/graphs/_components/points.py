@@ -60,7 +60,7 @@ class MeanPoints(Points):
 
     @override
     def _prepare_xy(self, graph: XYGraph) -> DataFrame:
-        return graph.table.row_statistics_by_dataset(sgstats.Basic.mean)
+        return graph.table._row_statistics_by_dataset(sgstats.Basic.mean)
 
     @override
     def _prepare_column(self, graph: ColumnGraph) -> NDArray:
@@ -71,7 +71,7 @@ class GeometricMeanPoints(Points):
 
     @override
     def _prepare_xy(self, graph: XYGraph) -> DataFrame:
-        return graph.table.row_statistics_by_dataset(
+        return graph.table._row_statistics_by_dataset(
             sgstats.Advanced.geometric_mean
         )
 
@@ -84,7 +84,7 @@ class MedianPoints(Points):
 
     @override
     def _prepare_xy(self, graph: XYGraph) -> DataFrame:
-        return graph.table.row_statistics_by_dataset(sgstats.Basic.median)
+        return graph.table._row_statistics_by_dataset(sgstats.Basic.median)
 
     @override
     def _prepare_column(self, graph: ColumnGraph) -> NDArray:

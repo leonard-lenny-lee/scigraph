@@ -1,22 +1,23 @@
 from __future__ import annotations
 
-from typing import override, TYPE_CHECKING
+from typing import Literal, override, TYPE_CHECKING
 
 import numpy as np
 from pandas import DataFrame, Index, MultiIndex
 
 from scigraph.datatables.abc import DataTable, DataSet
-from scigraph.analyses.abc import RowStatisticsI
-from scigraph.analyses._stats import normalize_fn_args
+from scigraph.analyses.abc import RowStatsI
 from scigraph.config import SG_DEFAULTS
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-    from scigraph.analyses._stats import SummaryStatArg
+    from scigraph.analyses._stats import SummaryStatFn
+    from scigraph.analyses import RowStatistics
+    from scigraph.graphs import XYGraph, ColumnGraph
 
 
-class XYTable(DataTable, RowStatisticsI):
+class XYTable(DataTable, RowStatsI):
 
     def __init__(
         self,
@@ -120,23 +121,41 @@ class XYTable(DataTable, RowStatisticsI):
         self._dataset_index_map: dict[str, int] = dict(
             zip(self._dataset_names, range(self._n_datasets))
         )
+    
+    ## Graph factories ##
+
+    def create_xy_graph(self) -> XYGraph:
+        from scigraph.graphs import XYGraph
+        return XYGraph(self)
+
+    def create_column_graph(self, *args, **kwargs) -> ColumnGraph:
+        from scigraph.graphs import ColumnGraph
+        return ColumnGraph.from_xy_table(self, *args, **kwargs)
+
+    ## Analysis factories and implementations ##
+
+    def row_statistics(
+        self,
+        scope: Literal["row", "dataset"],
+        *stats: str
+    ) -> RowStatistics:
+        from scigraph.analyses import RowStatistics
+        return RowStatistics(self, scope, *stats)
 
     @override
-    def row_statistics_by_row(self, *fns: SummaryStatArg) -> DataFrame:
-        fns_ = normalize_fn_args(*fns)
-        out = [np.apply_along_axis(fn, axis=1, arr=self.y_values) for fn in fns_]
+    def _row_statistics_by_row(self, *fns: SummaryStatFn) -> DataFrame:
+        out = [np.apply_along_axis(fn, axis=1, arr=self.y_values) for fn in fns]
         out = np.vstack(out).T
-        columns = Index([fn.__name__ for fn in fns_], name=self.y_title)
+        columns = Index([fn.__name__ for fn in fns], name=self.y_title)
         index = Index(np.mean(self.x_values, axis=1), name=self.x_title)
         return DataFrame(out, index, columns)
 
     @override
-    def row_statistics_by_dataset(self, *fns: SummaryStatArg) -> DataFrame:
-        fns_ = normalize_fn_args(*fns)
+    def _row_statistics_by_dataset(self, *fns: SummaryStatFn) -> DataFrame:
         out = self.as_df().T.groupby(level=0).aggregate(fns)
-        names = [fn.__name__ for fn in fns_]
+        names = [fn.__name__ for fn in fns]
         out = out.reorder_levels([1, 0], axis=1)[names].T  # type: ignore
-        if len(fns_) == 1:
+        if len(fns) == 1:
             out = out.loc[names[0]]
         out = out.reindex(columns=self._columns().unique(level=0))
         return out

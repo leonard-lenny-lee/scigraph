@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import override, Literal, Self, TYPE_CHECKING
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 from scigraph.datatables import XYTable
 from scigraph.graphs.abc import Graph
@@ -13,6 +14,8 @@ from scigraph._options import PointsType, ErrorbarType, ConnectingLineType
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
+
+    from scigraph.datatables import ColumnTable
 
 
 class XYGraph(Graph[XYTable]):
@@ -29,7 +32,6 @@ class XYGraph(Graph[XYTable]):
     @override
     def _link_table(self, table: XYTable) -> None:
         if not isinstance(table, XYTable):
-            # TODO - Maybe in the future accept other DataTables with adapters?
             raise TypeError("Only XYTables can be linked to XYGraphs.")
         self._table = table
         self.xaxis.title = table.x_title
@@ -86,3 +88,14 @@ class XYGraph(Graph[XYTable]):
             self._compose_legend(ax)
 
         return ax
+
+    @classmethod
+    def from_column_table(cls, table: ColumnTable) -> Self:
+        x = np.array(range(table.nrows))
+        x = x[:, np.newaxis]
+        values = np.hstack((x, table.values))
+        xy = XYTable(values, 1, 1, table.ncols)
+        xy.x_title = table.x_title
+        xy.y_title = table.y_title
+        xy.dataset_names = table._dataset_names
+        return cls(xy)

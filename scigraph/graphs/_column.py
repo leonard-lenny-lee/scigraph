@@ -3,8 +3,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional, Self, Literal, override
 
 import matplotlib.pyplot as plt
+import numpy as np
 
-from scigraph.datatables import ColumnTable
+from scigraph.datatables import XYTable, ColumnTable
 from scigraph.graphs.abc import Graph
 from scigraph.graphs._components import (
     Points, ErrorBars, ConnectingLine, Bars, BoxAndWhiskers
@@ -122,3 +123,18 @@ class ColumnGraph(Graph[ColumnTable]):
             self._compose_legend(ax)
 
         return ax
+
+    @classmethod
+    def from_xy_table(
+        cls,
+        table: XYTable,
+        direction: Literal["vertical", "horizontal"],
+    ) -> Self:
+        # Average replicates and remove X
+        values = table.row_statistics("dataset", "mean").analyze().iloc[:, 1:]
+        col_table = ColumnTable(np.array(values))
+        # Copy values
+        col_table.dataset_names = table._dataset_names
+        col_table.x_title = table.x_title
+        col_table.y_title = table.y_title
+        return cls(col_table, direction)

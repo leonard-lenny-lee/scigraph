@@ -13,12 +13,12 @@
 
   [graphs.xy]
   
-  linewidth = 0.5
+  linewidth = 1
   markersize = 3
   capsize = 2
   capthickness = 0.5
   color = ['#016899', '#00c4d5', '#fd4332', '#ff8872']
-  ls = ['-', '--', ':', '-.']
+  ls = '-'
   marker = ['o', 's', '^', 'x']
 
   [graphs.column]
@@ -70,7 +70,7 @@
       color = "black"
       linespacing = 1.2
       spacing_before = 0
-      spacing_after = 0
+      spacing_after = 4
       vertical_alignment = "top"
       horizontal_alignment = "left"
       
@@ -80,7 +80,7 @@
       color = "black"
       linespacing = 1.2
       spacing_before = 0
-      spacing_after = 0
+      spacing_after = 2
       vertical_alignment = "top"
       horizontal_alignment = "left"
 

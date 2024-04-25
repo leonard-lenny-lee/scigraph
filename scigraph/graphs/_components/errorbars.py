@@ -65,8 +65,8 @@ class SDErrorBars(ErrorBars):
 
     @override
     def _prepare_xy(self, graph: XYGraph) -> tuple[DataFrame, Errors]:
-        ori = graph.table.row_statistics_by_dataset(sgstats.Basic.mean)
-        err = graph.table.row_statistics_by_dataset(sgstats.Basic.sd)
+        ori = graph.table._row_statistics_by_dataset(sgstats.Basic.mean)
+        err = graph.table._row_statistics_by_dataset(sgstats.Basic.sd)
         return ori, err
 
     @override
@@ -80,8 +80,8 @@ class SEMErrorBars(ErrorBars):
 
     @override
     def _prepare_xy(self, graph: XYGraph) -> tuple[DataFrame, Errors]:
-        ori = graph.table.row_statistics_by_dataset(sgstats.Basic.mean)
-        err = graph.table.row_statistics_by_dataset(sgstats.Basic.sem)
+        ori = graph.table._row_statistics_by_dataset(sgstats.Basic.mean)
+        err = graph.table._row_statistics_by_dataset(sgstats.Basic.sem)
         return ori, err
 
     @override
@@ -95,8 +95,8 @@ class CI95ErrorBars(ErrorBars):
 
     @override
     def _prepare_xy(self, graph: XYGraph) -> tuple[DataFrame, Errors]:
-        ori = graph.table.row_statistics_by_dataset(sgstats.Basic.mean)
-        err = graph.table.row_statistics_by_dataset(
+        ori = graph.table._row_statistics_by_dataset(sgstats.Basic.mean)
+        err = graph.table._row_statistics_by_dataset(
             sgstats.ConfidenceInterval.mean
         )
         return ori, err
@@ -114,9 +114,9 @@ class RangeErrorBars(ErrorBars):
 
     @override
     def _prepare_xy(self, graph: XYGraph) -> tuple[DataFrame, Errors]:
-        ori = graph.table.row_statistics_by_dataset(sgstats.Basic.mean)
-        lower = ori - graph.table.row_statistics_by_dataset(sgstats.Basic.min)
-        upper = graph.table.row_statistics_by_dataset(sgstats.Basic.max) - ori
+        ori = graph.table._row_statistics_by_dataset(sgstats.Basic.mean)
+        lower = ori - graph.table._row_statistics_by_dataset(sgstats.Basic.min)
+        upper = graph.table._row_statistics_by_dataset(sgstats.Basic.max) - ori
         err = {col: (lower[col].values, upper[col].values) for col in ori}
         return ori, err
 
@@ -133,10 +133,10 @@ class GeometricSDErrorBars(ErrorBars):
 
     @override
     def _prepare_xy(self, graph: XYGraph) -> tuple[DataFrame, Errors]:
-        ori = graph.table.row_statistics_by_dataset(
+        ori = graph.table._row_statistics_by_dataset(
             sgstats.Advanced.geometric_mean
         )
-        err = graph.table.row_statistics_by_dataset(
+        err = graph.table._row_statistics_by_dataset(
             sgstats.Advanced.geometric_sd
         )
         return ori, err

@@ -74,7 +74,13 @@ class BarType(Option):
 
 class RowStatisticsScope(Option):
     ROW            = auto()
-    DATASET = auto()
+    DATASET        = auto()
+
+
+class DescStatsSubColPolicy(Option):
+    AVERAGE        = auto()
+    SEPARATE       = auto()
+    MERGE          = auto()
 
 
 class SummaryStatistic(Option):

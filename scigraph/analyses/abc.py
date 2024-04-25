@@ -5,11 +5,10 @@ from typing import Any, TYPE_CHECKING
 
 from matplotlib.axes import Axes
 
-from scigraph.analyses._stats import SummaryStatArg
-
 if TYPE_CHECKING:
     from pandas import DataFrame
 
+    from scigraph.analyses._stats import SummaryStatFn
     from scigraph.datatables.abc import DataTable
     from scigraph.graphs.abc import Graph
 
@@ -36,16 +35,22 @@ class GraphableAnalysis[T: DataTable, G: Graph](Analysis[T], ABC):
     ) -> None: ...
 
 
-class RowStatisticsI(ABC):
+class RowStatsI(ABC):
 
     @abstractmethod
-    def row_statistics_by_row(self, *fns: SummaryStatArg) -> DataFrame: ...
+    def _row_statistics_by_row(self, *fns: SummaryStatFn) -> DataFrame: ...
 
     @abstractmethod
-    def row_statistics_by_dataset(self, *fns: SummaryStatArg) -> DataFrame: ...
+    def _row_statistics_by_dataset(self, *fns: SummaryStatFn) -> DataFrame: ...
 
 
-class DescriptiveStatisticsI(ABC):
+class DescStatsI(ABC):
 
     @abstractmethod
-    def descriptive_statistics(self, *fns: SummaryStatArg) -> DataFrame: ...
+    def _desc_stats_average(self, *fns: SummaryStatFn) -> DataFrame: ...
+
+    @abstractmethod
+    def _desc_stats_separate(self, *fns: SummaryStatFn) -> DataFrame: ...
+
+    @abstractmethod
+    def _desc_stats_merge(self, *fns: SummaryStatFn) -> DataFrame: ...

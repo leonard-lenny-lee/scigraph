@@ -3,7 +3,7 @@
 from typing import Callable
 import numpy as np
 from numpy.typing import NDArray
-from scipy.stats import t
+from scipy.stats import t, skew, kurtosis
 
 from scigraph._options import SummaryStatistic
 
@@ -67,11 +67,11 @@ class Advanced:
 
     @staticmethod
     def skewness(arr: NDArray) -> float:
-        """Calculate according to adjusted Fischer-Pearson coefficient"""
-        n = np.count_nonzero(arr)
-        m_3 = np.nansum(np.power((arr - np.nanmean(arr)), 3)) / n
-        b_1 = m_3 / np.nanstd(arr) ** 3
-        return (((n * (n - 1)) ** 0.5) / (n - 2)) * b_1
+        return skew(arr, nan_policy="omit")  # type: ignore
+
+    @staticmethod
+    def kurtosis(arr: NDArray) -> float:
+        return kurtosis(arr, nan_policy="omit")  # type: ignore
 
     @staticmethod
     def geometric_mean(arr: NDArray) -> float:
@@ -92,7 +92,6 @@ class ConfidenceInterval:
 
 
 type SummaryStatFn = Callable[[NDArray], float]
-type SummaryStatArg = SummaryStatFn | str
 
 
 def get_summary_statistic_fn(stat: SummaryStatistic | str) -> SummaryStatFn:
@@ -101,16 +100,6 @@ def get_summary_statistic_fn(stat: SummaryStatistic | str) -> SummaryStatFn:
     if stat in FN_MAP:
         return FN_MAP[stat]
     raise NotImplementedError
-
-
-def normalize_fn_args(*args: SummaryStatArg) -> list[SummaryStatFn]:
-    out = []
-    for arg in args:
-        if isinstance(arg, str):
-            out.append(get_summary_statistic_fn(arg))
-        else:
-            out.append(arg)
-    return out
 
 
 FN_MAP: dict[SummaryStatistic, SummaryStatFn] = {
@@ -127,6 +116,7 @@ FN_MAP: dict[SummaryStatistic, SummaryStatFn] = {
     SummaryStatistic.MEDIAN: Basic.median,
     SummaryStatistic.CV: Advanced.coefficient_of_variation,
     SummaryStatistic.SKEWNESS: Advanced.skewness,
+    SummaryStatistic.KURTOSIS: Advanced.kurtosis,
     SummaryStatistic.GEOMETRIC_MEAN: Advanced.geometric_mean,
     SummaryStatistic.GEOMETRIC_SD: Advanced.geometric_sd,
     SummaryStatistic.MEAN_CI: ConfidenceInterval.mean,

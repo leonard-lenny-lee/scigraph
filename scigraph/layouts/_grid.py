@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Iterator, TYPE_CHECKING, override
 
+import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
@@ -42,19 +43,15 @@ class GridLayout(Layout):
             fig_kw["figsize"] = figsize
 
         fig, axes = plt.subplots(self._nrows, self._ncols, **fig_kw)
-        if isinstance(axes, Axes):  # Only one graph specified
-            axes = [[axes]]
+        axes = np.array(axes)
+        graphs = np.array(self._graphs)
 
-        for row, (ax_row, g_row) in enumerate(zip(axes, self._graphs)):
-            if isinstance(ax_row, Axes):  # Only one dimension specified
-                axes[row] = ax_row = [ax_row]  # type: ignore
-
-            for ax, graph in zip(ax_row, g_row):
-                if graph is not None:
-                    if self._create_layout_legend:
-                        # Suppress axes legends
-                        graph.include_legend = False
-                    graph.draw(ax)
+        for ax, graph in zip(axes.flatten(), graphs.flatten()):
+            if graph is not None:
+                if self._create_layout_legend:
+                    # Suppress axes legends
+                    graph.include_legend = False
+                graph.draw(ax)
 
         return fig
 
