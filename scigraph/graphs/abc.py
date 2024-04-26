@@ -124,7 +124,7 @@ class GraphComponent(ABC):
     @abstractmethod
     def draw_column(self, graph: ColumnGraph, ax: Axes) -> None: ...
 
-    # @abstractmethod
+    @abstractmethod
     def draw_grouped(self, graph: GroupedGraph, ax: Axes) -> None: ...
 
     @classmethod

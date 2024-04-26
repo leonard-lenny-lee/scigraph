@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 
     from scigraph.analyses._stats import SummaryStatFn
     from scigraph.analyses import RowStatistics
+    from scigraph.graphs import GroupedGraph
 
 
 class GroupedTable(DataTable, RowStatsI):
@@ -96,6 +97,16 @@ class GroupedTable(DataTable, RowStatsI):
     def row_names(self, names: list[str]) -> None:
         self._verify_names(names, self.nrows)
         self._row_names = names
+
+    ## Graph factories ##
+
+    def create_grouped_graph(
+        self,
+        direction: Literal["vertical", "horizontal"],
+        grouping: Literal["interleaved", "separated", "stacked"],
+    ) -> GroupedGraph:
+        from scigraph.graphs import GroupedGraph
+        return GroupedGraph(self, direction, grouping)
 
     ## Analysis factories and implementations ##
 
