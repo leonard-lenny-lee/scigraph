@@ -219,10 +219,11 @@ class IndividualConnectingLine(ConnectingLine):
         line_kws["zorder"] = 0
         line_kws.update(**self.kw)
 
-        for x_, row in zip(x, y):
+        for x, row in zip(x, y):
             row = row.reshape(graph.table._n_datasets,
                               graph.table._n_replicates).T
             for y_ in row:
+                x_ = x
                 if graph._direction is GroupedGraphDirection.HORIZONTAL:
                     x_, y_ = y_, x_
                 if self.join_nan:

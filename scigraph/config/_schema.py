@@ -97,7 +97,11 @@ SCHEMA: Schema = {
             "linewidth": VNum,
             "markersize": VNum,
             "capsize": VNum,
-            "capthickness": VNum
+            "capthickness": VNum,
+            "barcolor": VString,
+            "barwidth": VNum,
+            "baredgecolor": VString,
+            "baredgethickness": VNum,
         },
         "axis": {
             "continuous": {

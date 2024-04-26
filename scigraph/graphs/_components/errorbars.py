@@ -9,11 +9,13 @@ from pandas import DataFrame
 from matplotlib.axes import Axes
 
 from scigraph.graphs.abc import GraphComponent 
-from scigraph._options import ColumnGraphDirection, ErrorbarType
+from scigraph._options import (
+    ColumnGraphDirection, ErrorbarType, GroupedGraphDirection
+)
 import scigraph.analyses._stats as sgstats
 
 if TYPE_CHECKING:
-    from scigraph.graphs import XYGraph, ColumnGraph
+    from scigraph.graphs import XYGraph, ColumnGraph, GroupedGraph
 
 
 class ErrorBars(GraphComponent, ABC):
@@ -50,11 +52,32 @@ class ErrorBars(GraphComponent, ABC):
             ax.errorbar(x[i], yori[i], xerr=xerr[i], yerr=yerr[i],
                         **self.kw, **props)
 
+    @override
+    def draw_grouped(self, graph: GroupedGraph, ax: Axes) -> None:
+        if not graph.table._n_replicates > 1:
+            return
+
+        x = graph._x()
+        yori, yerr = self._prepare_grouped(graph)
+        xerr = None
+
+        for i, id in enumerate(graph.table.dataset_ids):
+            props = graph.plot_properties[id].errorbar_kw()
+            props.update(**self.kw)
+            x_, y_, xerr_, yerr_ = x[i], yori[id], xerr, yerr[id]
+            if graph._direction is GroupedGraphDirection.HORIZONTAL:
+                x_, y_, xerr_, yerr_= y_, x_, yerr_, xerr_
+            ax.errorbar(x_, y_, xerr=xerr_, yerr=yerr_,
+                        **self.kw, **props)
+
     @abstractmethod
     def _prepare_xy(self, graph: XYGraph, /) -> tuple[DataFrame, Errors]: ...
 
     @abstractmethod
     def _prepare_column(self, graph: ColumnGraph, /) -> tuple[NDArray, NDArray]: ...
+
+    @abstractmethod
+    def _prepare_grouped(self, graph: GroupedGraph, /) -> tuple[DataFrame, Errors]: ...
 
     @classmethod
     def from_opt(cls, opt: ErrorbarType, kw: dict[str, Any], **_) -> ErrorBars:
@@ -75,6 +98,12 @@ class SDErrorBars(ErrorBars):
         yerr = graph.table._reduce_by_column(sgstats.Basic.sd)
         return yori, yerr
 
+    @override
+    def _prepare_grouped(self, graph: GroupedGraph) -> tuple[DataFrame, Errors]:
+        ori = graph.table._row_statistics_by_dataset(sgstats.Basic.mean)
+        err = graph.table._row_statistics_by_dataset(sgstats.Basic.sd)
+        return ori, err
+
 
 class SEMErrorBars(ErrorBars):
 
@@ -89,6 +118,12 @@ class SEMErrorBars(ErrorBars):
         yori = graph.table._reduce_by_column(sgstats.Basic.mean)
         yerr = graph.table._reduce_by_column(sgstats.Basic.sem)
         return yori, yerr
+
+    @override
+    def _prepare_grouped(self, graph: GroupedGraph) -> tuple[DataFrame, Errors]:
+        ori = graph.table._row_statistics_by_dataset(sgstats.Basic.mean)
+        err = graph.table._row_statistics_by_dataset(sgstats.Basic.sem)
+        return ori, err
 
 
 class CI95ErrorBars(ErrorBars):
@@ -109,6 +144,15 @@ class CI95ErrorBars(ErrorBars):
         )
         return yori, yerr
 
+    @override
+    def _prepare_grouped(self, graph: GroupedGraph) -> tuple[DataFrame, Errors]:
+        ori = graph.table._row_statistics_by_dataset(sgstats.Basic.mean)
+        err = graph.table._row_statistics_by_dataset(
+            sgstats.ConfidenceInterval.mean
+        )
+        return ori, err
+
+
 
 class RangeErrorBars(ErrorBars):
 
@@ -126,6 +170,14 @@ class RangeErrorBars(ErrorBars):
         lower = ori - graph.table._reduce_by_column(sgstats.Basic.min)
         upper = graph.table._reduce_by_column(sgstats.Basic.max) - ori
         err = np.vstack((lower, upper))
+        return ori, err
+
+    @override
+    def _prepare_grouped(self, graph: GroupedGraph) -> tuple[DataFrame, Errors]:
+        ori = graph.table._row_statistics_by_dataset(sgstats.Basic.mean)
+        lower = ori - graph.table._row_statistics_by_dataset(sgstats.Basic.min)
+        upper = graph.table._row_statistics_by_dataset(sgstats.Basic.max) - ori
+        err = {col: (lower[col].values, upper[col].values) for col in ori}
         return ori, err
 
 
@@ -146,6 +198,16 @@ class GeometricSDErrorBars(ErrorBars):
         yori = graph.table._reduce_by_column(sgstats.Advanced.geometric_mean)
         yerr = graph.table._reduce_by_column(sgstats.Advanced.geometric_sd)
         return yori, yerr
+
+    @override
+    def _prepare_grouped(self, graph: GroupedGraph) -> tuple[DataFrame, Errors]:
+        ori = graph.table._row_statistics_by_dataset(
+            sgstats.Advanced.geometric_mean
+        )
+        err = graph.table._row_statistics_by_dataset(
+            sgstats.Advanced.geometric_sd
+        )
+        return ori, err
 
 
 _FACTORY_MAP: dict[ErrorbarType, type[ErrorBars]] = {

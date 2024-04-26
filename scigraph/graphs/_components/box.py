@@ -3,12 +3,12 @@ from __future__ import annotations
 from typing import Self, Never, Any, override, TYPE_CHECKING
 
 from scigraph.graphs.abc import GraphComponent
-from scigraph._options import ColumnGraphDirection
+from scigraph._options import ColumnGraphDirection, GroupedGraphDirection
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
 
-    from scigraph.graphs import ColumnGraph
+    from scigraph.graphs import ColumnGraph, GroupedGraph
 
 
 class BoxAndWhiskers(GraphComponent):
@@ -37,6 +37,22 @@ class BoxAndWhiskers(GraphComponent):
             bw_kw.update(**self.kw)
             bplot = ax.boxplot(x[i], vert=vert, whis=self.whis, positions=[i], 
                                patch_artist=True, labels=[id], zorder=1, **bw_kw)
+            bplot['boxes'][0].set_facecolor(props.barcolor)
+
+    @override
+    def draw_grouped(self, graph: GroupedGraph, ax: Axes) -> None:
+        x = graph._x()
+        vert = graph._direction is GroupedGraphDirection.VERTICAL
+        y = graph.table.as_df()
+        width_adjustment_factor = 1 / (1 + graph.table._n_datasets)
+
+        for id, x_ in zip(graph.table.dataset_ids, x):
+            props = graph.plot_properties[id]
+            bw_kw = props.box_and_whisker_kw()
+            bw_kw.update(**self.kw)
+            bw_kw["widths"] *= width_adjustment_factor
+            bplot = ax.boxplot(y[id].T, vert=vert, whis=self.whis, positions=x_,
+                               patch_artist=True, zorder=1, **bw_kw)
             bplot['boxes'][0].set_facecolor(props.barcolor)
 
     @classmethod

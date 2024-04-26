@@ -45,9 +45,13 @@
   markersize = 3
   capsize = 2
   capthickness = 1
-  color = ['#016899', '#00c4d5', '#fd4332', '#ff8872']
+  color = 'k'
   ls = '-'
   marker = ['o', 's', '^', 'x']
+  barcolor = ['#016899', 'skyblue', 'steelblue', 'powderblue']
+  barwidth = 0.5
+  baredgecolor = 'k'
+  baredgethickness = 1
 
   [graphs.axis]
 
