@@ -13,11 +13,14 @@ from numpy.typing import NDArray
 from pandas import DataFrame
 
 from scigraph.graphs.abc import GraphComponent
-from scigraph._options import ColumnGraphDirection, ConnectingLineType
+from scigraph._options import (
+    ColumnGraphDirection, ConnectingLineType, GroupedGraphDirection,
+    GroupedGraphGrouping,
+)
 import scigraph.analyses._stats as sgstats
 
 if TYPE_CHECKING:
-    from scigraph.graphs import XYGraph, ColumnGraph
+    from scigraph.graphs import XYGraph, ColumnGraph, GroupedGraph
 
 
 class ConnectingLine(GraphComponent, ABC):
@@ -58,11 +61,29 @@ class ConnectingLine(GraphComponent, ABC):
         line_kws.update(**self.kw)
         ax.plot(x, y, **line_kws)
 
+    @override
+    def draw_grouped(self, graph: GroupedGraph, ax: Axes) -> None:
+        x = graph._x()
+        y = self._prepare_grouped(graph)
+
+        for i, id in enumerate(graph.table.dataset_ids):
+            props = graph.plot_properties[id].line_kws()
+            props.update(**self.kw)
+            x_, y_ = x[i], np.array(y[id].values)
+            if graph._direction is GroupedGraphDirection.HORIZONTAL:
+                x_, y_ = y_, x_
+            artist, = ax.plot(x_, y_, **props)
+            graph._add_legend_artist(id, artist)
+        
+
     @abstractmethod
     def _prepare_xy(self, graph: XYGraph, /) -> DataFrame: ...
 
     @abstractmethod
     def _prepare_column(self, graph: ColumnGraph, /) -> NDArray: ...
+
+    @abstractmethod
+    def _prepare_grouped(self, graph: GroupedGraph, /) -> DataFrame: ...
 
     def _mask_nan(self, x: NDArray, y: NDArray) -> tuple[NDArray, NDArray]:
         assert x.shape == y.shape
@@ -94,6 +115,10 @@ class MeanConnectingLine(ConnectingLine):
     def _prepare_column(self, graph: ColumnGraph) -> NDArray:
         return graph.table._reduce_by_column(sgstats.Basic.mean)
 
+    @override
+    def _prepare_grouped(self, graph: GroupedGraph) -> DataFrame:
+        return graph.table._row_statistics_by_dataset(sgstats.Basic.mean)
+
 
 class GeometricMeanConnectingLine(ConnectingLine):
 
@@ -107,6 +132,10 @@ class GeometricMeanConnectingLine(ConnectingLine):
     def _prepare_column(self, graph: ColumnGraph) -> NDArray:
         return graph.table._reduce_by_column(sgstats.Advanced.geometric_mean)
 
+    @override
+    def _prepare_grouped(self, graph: GroupedGraph) -> DataFrame:
+        return graph.table._row_statistics_by_dataset(sgstats.Advanced.geometric_mean)
+
 
 class MedianConnectingLine(ConnectingLine):
 
@@ -117,6 +146,10 @@ class MedianConnectingLine(ConnectingLine):
     @override
     def _prepare_column(self, graph: ColumnGraph) -> NDArray:
         return graph.table._reduce_by_column(sgstats.Basic.median)
+
+    @override
+    def _prepare_grouped(self, graph: GroupedGraph) -> DataFrame:
+        return graph.table._row_statistics_by_dataset(sgstats.Basic.median)
 
 
 class IndividualConnectingLine(ConnectingLine):
@@ -154,11 +187,58 @@ class IndividualConnectingLine(ConnectingLine):
             ax.plot(x_, y, **line_kws)
 
     @override
+    def draw_grouped(self, graph: GroupedGraph, ax: Axes) -> None:
+        if graph._grouping is GroupedGraphGrouping.INTERLEAVED:
+            self._draw_grouped_interleaved(graph, ax)
+            return
+
+        x = graph._x()
+        y = graph.table._values
+        n = graph.table._n_replicates
+            
+        for i, id in enumerate(graph.table.dataset_ids):
+            props = graph.plot_properties[id].line_kws()
+            props.update(**self.kw)
+            for y_ in y[:, i*n:(i+1)*n].T:
+                x_ = x[i]
+                if graph._direction is GroupedGraphDirection.HORIZONTAL:
+                    x_, y_ = y_, x_
+                if self.join_nan:
+                    x_, y_ = self._mask_nan(x_, y_)
+                ax.plot(x_, y_, **props)
+            artist = Line2D([], [], **props)
+            graph._add_legend_artist(id, artist)
+
+    def _draw_grouped_interleaved(self, graph: GroupedGraph, ax: Axes) -> None:
+        x = graph._x().T
+        y = graph.table._values
+
+        line_kws = graph \
+            .plot_properties[graph.table.dataset_ids[0]] \
+            .line_kws()
+        line_kws["zorder"] = 0
+        line_kws.update(**self.kw)
+
+        for x_, row in zip(x, y):
+            row = row.reshape(graph.table._n_datasets,
+                              graph.table._n_replicates).T
+            for y_ in row:
+                if graph._direction is GroupedGraphDirection.HORIZONTAL:
+                    x_, y_ = y_, x_
+                if self.join_nan:
+                    x_, y_ = self._mask_nan(x_, y_)
+                ax.plot(x_, y_, **line_kws)
+
+    @override
     def _prepare_xy(self, _) -> Never:
         raise NotImplementedError
 
     @override
     def _prepare_column(self, _) -> Never:
+        raise NotImplementedError
+
+    @override
+    def _prepare_grouped(self, _) -> Never:
         raise NotImplementedError
 
 
