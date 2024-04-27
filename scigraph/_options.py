@@ -118,4 +118,9 @@ class TTestDirection(Option):
     GREATER         = auto()
     LESS            = auto()
 
+
+class WilcoxonZeroMethod(Option):
+    WILCOX          = auto()
+    PRATT           = auto()
+
 # fmt: on

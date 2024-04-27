@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+__all__ = ["RowStatistics"]
+
 from typing import Literal, TYPE_CHECKING, override
 
 from scigraph.analyses.abc import Analysis, RowStatsI

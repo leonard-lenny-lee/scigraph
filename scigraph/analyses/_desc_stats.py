@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+__all__ = ["DescriptiveStatistics"]
+
 from typing import Literal, override, TYPE_CHECKING
 
 from scigraph.analyses.abc import Analysis, DescStatsI

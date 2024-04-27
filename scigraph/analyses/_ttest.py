@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+__all__ = ["StudentsTTest", "WelchTTest", "PairedTTest", "MannWhitneyUTest",
+           "KolmogorovSmirnovTest", "WilcoxonSignedRankTest"]
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Literal, Optional, TYPE_CHECKING, override
@@ -9,7 +12,7 @@ import scipy.stats
 
 from scigraph.analyses.abc import GraphableAnalysis
 from scigraph.analyses._utils import generate_p_summary
-from scigraph._options import TTestDirection
+from scigraph._options import TTestDirection, WilcoxonZeroMethod
 from scigraph.config import SG_DEFAULTS
 
 if TYPE_CHECKING:
@@ -122,15 +125,16 @@ class TTest(GraphableAnalysis):
     def result(self) -> _Result:
         return super().result
 
+
 class _Result(ABC):
-    
+
     @property
     @abstractmethod
     def _label(self) -> str: ...
 
 
 @dataclass(frozen=True)
-class TTestResult( _Result):
+class TTestResult(_Result):
     p: float
     p_summary: str
     significant: bool
@@ -173,7 +177,112 @@ class PairedTTest(TTest):
         return self._result
 
 
-class MannWhitneyTest(TTest): ...
+@dataclass(frozen=True)
+class UTestResult(_Result):
+    p: float
+    p_summary: str
+    significant: bool
+    confidence_level: float
+    direction: str
+    u: float
+
+    @property
+    @override
+    def _label(self) -> str:
+        return self.p_summary
 
 
-class KolmogorovSmirnovTest(TTest): ...
+class MannWhitneyUTest(TTest):
+    
+    @override
+    def analyze(self) -> UTestResult:
+        a, b = self._get_ab()
+        alternative = self._direction.to_str("-")
+        r = scipy.stats.mannwhitneyu(a, b, alternative=alternative,
+                                     nan_policy="omit")  # type: ignore
+
+        p_summary = generate_p_summary(r.pvalue)
+        significant = r.pvalue < self._confidence_level
+
+        self._result = UTestResult(r.pvalue, p_summary, significant,
+                                   self._confidence_level, alternative,
+                                   r.statistic)
+
+        return self._result
+
+
+@dataclass(frozen=True)
+class KSTestResult(_Result):
+    p: float
+    p_summary: str
+    significant: bool
+    confidence_level: float
+    d: float
+
+    @property
+    @override
+    def _label(self) -> str:
+        return self.p_summary
+
+
+class KolmogorovSmirnovTest(TTest):
+
+    @override
+    def analyze(self) -> KSTestResult:
+        a, b = self._get_ab()
+        r = scipy.stats.kstest(a, b, nan_policy="omit")  # type: ignore
+
+        p_summary = generate_p_summary(r.pvalue)
+        significant = r.pvalue < self._confidence_level
+
+        self._result = KSTestResult(r.pvalue, p_summary, significant,
+                                    self._confidence_level, r.statistic)
+
+        return self._result
+
+
+@dataclass(frozen=True)
+class WilcoxonTestResult(_Result):
+    p: float
+    p_summary: str
+    significant: bool
+    confidence_level: float
+    direction: str
+    w: float
+
+    @property
+    @override
+    def _label(self) -> str:
+        return self.p_summary
+
+
+class WilcoxonSignedRankTest(TTest):
+    
+    def __init__(
+        self,
+        table: ColumnTable,
+        datasets: tuple[str, str],
+        direction: Literal["two sided", "greater", "less"] = "two sided",
+        confidence_level: float = 0.95,
+        zero_method: Literal["wilcox", "pratt"] = "wilcox",
+    ) -> None:
+        super().__init__(table, datasets, direction, confidence_level)
+        self._zero_method = WilcoxonZeroMethod.from_str(zero_method)
+
+    @override
+    def analyze(self) -> WilcoxonTestResult:
+        a, b = self._get_ab()
+        alternative = self._direction.to_str("-")
+        
+        r = scipy.stats.wilcoxon(a, b, self._zero_method.to_str(),
+                                 alternative=alternative,
+                                 nan_policy="omit")  # type: ignore
+
+        p_summary = generate_p_summary(r.pvalue)
+        significant = r.pvalue < self._confidence_level
+
+        self._result = WilcoxonTestResult(r.pvalue, p_summary, significant,
+                                          self._confidence_level, alternative,
+                                          r.statistic)
+        
+        return self._result
