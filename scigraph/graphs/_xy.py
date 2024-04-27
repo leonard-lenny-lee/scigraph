@@ -81,8 +81,8 @@ class XYGraph(Graph[XYTable]):
         for component in self._components:
             component.draw_xy(self, ax)
 
-        for analysis in self._linked_analyses:
-            analysis.draw(self, ax)
+        for analysis, kws in self._linked_analyses:
+            analysis.draw(self, ax, **kws)
 
         if self.include_legend:
             self._compose_legend(ax)

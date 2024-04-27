@@ -7,7 +7,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from scigraph.graphs.abc import GraphComponent
-from scigraph._options import ColumnGraphDirection, BarType
+from scigraph._options import BarType
 import scigraph.analyses._stats as sgstats
 
 if TYPE_CHECKING:
@@ -31,13 +31,12 @@ class Bars(GraphComponent, ABC):
     def draw_column(self, graph: ColumnGraph, ax: Axes) -> None:
         x = np.linspace(0, graph.table.ncols - 1, graph.table.ncols)
         y = self._prepare_column(graph)
-        is_vertical = graph._direction is ColumnGraphDirection.VERTICAL
 
         for i, id in enumerate(graph.table.dataset_ids):
             if not self.line_only:  # Draw full bars
-                props = graph.plot_properties[id].bar_kw(is_vertical)
+                props = graph.plot_properties[id].bar_kw(graph._is_vertical)
                 props.update(**self.kw)
-                if is_vertical:
+                if graph._is_vertical:
                     ax.bar(x[i], y[i], **props)
                 else:  # Horizontal
                     ax.barh(x[i], y[i], **props)
@@ -49,7 +48,7 @@ class Bars(GraphComponent, ABC):
                     props.barwidth = 0.5
                 x_delta = props.barwidth / 2
                 x_ = x[i] - x_delta, x[i] + x_delta
-                if is_vertical:
+                if graph._is_vertical:
                     ax.hlines(y[i], *x_, **barl_kw)
                 else:  # Horizontal
                     ax.vlines(y[i], *x_, **barl_kw)
@@ -58,14 +57,13 @@ class Bars(GraphComponent, ABC):
     def draw_grouped(self, graph: GroupedGraph, ax: Axes) -> None:
         x = graph._x()
         y = self._prepare_grouped(graph).values.T
-        is_vertical = graph._direction is ColumnGraphDirection.VERTICAL
         width_adjustment_factor = 1 / (1 + graph.table._n_datasets)
 
         for x_, y_, id in zip(x, y, graph.table.dataset_ids):
             if not self.line_only:  # Draw full bars
-                props = graph.plot_properties[id].bar_kw(is_vertical)
+                props = graph.plot_properties[id].bar_kw(graph._is_vertical)
                 props.update(**self.kw)
-                if is_vertical:
+                if graph._is_vertical:
                     props["width"] *= width_adjustment_factor
                     ax.bar(x_, y_, **props)
                 else:  # Horizontal
@@ -79,7 +77,7 @@ class Bars(GraphComponent, ABC):
                     props.barwidth = 0.5
                 x_delta = props.barwidth * width_adjustment_factor / 2
                 x_ = x_ - x_delta, x_ + x_delta
-                if is_vertical:
+                if graph._is_vertical:
                     ax.hlines(y_, *x_, **barl_kw)
                 else:  # Horizontal
                     ax.vlines(y_, *x_, **barl_kw)

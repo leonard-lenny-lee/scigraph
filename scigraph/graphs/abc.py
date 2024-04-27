@@ -20,7 +20,7 @@ class Graph[T: DataTable](ABC):
 
     def __init__(self) -> None:
         self._legend_artists: dict[str, list[Any]] = {}
-        self._linked_analyses: list[GraphableAnalysis] = []
+        self._linked_analyses: list[tuple[GraphableAnalysis, dict]] = []
         self._components: list[GraphComponent] = []
         self.include_legend = True
 
@@ -43,14 +43,14 @@ class Graph[T: DataTable](ABC):
     def title(self, val: str) -> None:
         self._title = val
 
-    def link_analysis(self, analysis: GraphableAnalysis) -> Self:
+    def link_analysis(self, analysis: GraphableAnalysis, **draw_kw) -> Self:
         if not isinstance(analysis, GraphableAnalysis):
             raise TypeError(f"{type(analysis).__name__} is not graphable.")
 
         if analysis.table is not self.table:
             raise ValueError("Linked analysis must be from the same DataTable")
 
-        self._linked_analyses.append(analysis)
+        self._linked_analyses.append((analysis, draw_kw))
         return self
 
     @abstractmethod

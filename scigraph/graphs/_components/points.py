@@ -10,9 +10,7 @@ from pandas import DataFrame
 import seaborn as sns
 
 from scigraph.graphs.abc import GraphComponent
-from scigraph._options import (
-    ColumnGraphDirection, GroupedGraphDirection, PointsType
-)
+from scigraph._options import PointsType
 import scigraph.analyses._stats as sgstats
 from scigraph._log import LOG
 
@@ -38,7 +36,7 @@ class Points(GraphComponent, ABC):
     def draw_column(self, graph: ColumnGraph, ax: Axes) -> None:
         x = np.linspace(0, graph.table.ncols - 1, graph.table.ncols)
         y = self._prepare_column(graph)
-        if graph._direction is ColumnGraphDirection.HORIZONTAL:
+        if not graph._is_vertical:
             x, y = y, x
         
         for i, id in enumerate(graph.table.dataset_ids):
@@ -55,7 +53,7 @@ class Points(GraphComponent, ABC):
             props = graph.plot_properties[id].point_kws()
             props.update(**self.kw)
             x_, y_ = x[i], np.array(y[id].values)
-            if graph._direction is GroupedGraphDirection.HORIZONTAL:
+            if not graph._is_vertical:
                 x_, y_ = y_, x_
             artist, = ax.plot(x_, y_, **props)
             graph._add_legend_artist(id, artist)
@@ -154,7 +152,7 @@ class IndividualPoints(Points):
         x = np.repeat(x, graph.table.nrows)
         y = graph.table.values.flatten('F')
 
-        if graph._direction is ColumnGraphDirection.HORIZONTAL:
+        if not graph._is_vertical:
             x, y = y, x
         
         for i, id in enumerate(graph.table.dataset_ids):
@@ -175,7 +173,7 @@ class IndividualPoints(Points):
             props = graph.plot_properties[id].point_kws()
             props.update(**self.kw)
             x_, y_ = x[i], y[:, i*n:(i+1)*n].ravel('F')
-            if graph._direction is GroupedGraphDirection.HORIZONTAL:
+            if not graph._is_vertical:
                 x_, y_ = y_, x_
             artist, = ax.plot(x_, y_, **props)
             graph._add_legend_artist(id, artist)
@@ -202,7 +200,7 @@ class SwarmPoints(Points):
         x = np.repeat(x, graph.table.nrows)
         y = graph.table.values.flatten('F')
         # Use seaborn for swarm
-        if graph._direction is ColumnGraphDirection.HORIZONTAL:
+        if not graph._is_vertical:
             orient = "h"
             x, y = y, x
         else:
@@ -226,7 +224,7 @@ class SwarmPoints(Points):
         for i, id in enumerate(graph.table.dataset_ids):
             props = graph.plot_properties[id]
             x_, y_ = x[i], y[:, i*n:(i+1)*n].ravel('F')
-            if graph._direction is GroupedGraphDirection.HORIZONTAL:
+            if not graph._is_vertical:
                 orient = "h"
                 x_, y_ = y_, x_
             else:

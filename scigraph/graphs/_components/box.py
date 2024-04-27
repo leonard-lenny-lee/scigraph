@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Self, Never, Any, override, TYPE_CHECKING
 
 from scigraph.graphs.abc import GraphComponent
-from scigraph._options import ColumnGraphDirection, GroupedGraphDirection
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
@@ -29,7 +28,7 @@ class BoxAndWhiskers(GraphComponent):
     @override
     def draw_column(self, graph: ColumnGraph, ax: Axes) -> None:
         x = graph.table.values.T
-        vert = graph._direction is ColumnGraphDirection.VERTICAL
+        vert = graph._is_vertical
 
         for i, id in enumerate(graph.table.dataset_ids):
             props = graph.plot_properties[id]
@@ -42,7 +41,7 @@ class BoxAndWhiskers(GraphComponent):
     @override
     def draw_grouped(self, graph: GroupedGraph, ax: Axes) -> None:
         x = graph._x()
-        vert = graph._direction is GroupedGraphDirection.VERTICAL
+        vert = graph._is_vertical
         y = graph.table.as_df()
         width_adjustment_factor = 1 / (1 + graph.table._n_datasets)
 

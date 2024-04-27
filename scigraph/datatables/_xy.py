@@ -104,9 +104,11 @@ class XYTable(DataTable, RowStatsI):
 
         # Modifiable attributes
         if x_title is None:
-            x_title = SG_DEFAULTS["datatables.xy.x_title"]
+            default: str = SG_DEFAULTS["datatables.xy.x_title"]
+            x_title = default
         if y_title is None:
-            y_title = SG_DEFAULTS["datatables.xy.y_title"]
+            default: str = SG_DEFAULTS["datatables.xy.y_title"]
+            y_title = default
 
         self.x_title = x_title
         self.y_title = y_title

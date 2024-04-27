@@ -113,6 +113,17 @@ SCHEMA: Schema = {
             }
         }
     },
+    "analyses": {
+        "ttest": {
+            "draw": {
+                "arm_length": Num,
+                "distance_below": Num,
+                "distance_above": Num,
+                "color": String,
+                "linewidth": Num,
+            }
+        }
+    },
     "layout": {
         "caption": {
             "direction": Param(str, opt={"down", "up"}),

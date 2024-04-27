@@ -24,6 +24,12 @@ class Analysis[T: DataTable](ABC):
     @abstractmethod
     def analyze(self) -> Any: ...
 
+    @property
+    def result(self) -> Any:
+        if not hasattr(self, "_result"):
+            self._result = self.analyze()
+        return self._result
+
 
 class GraphableAnalysis[T: DataTable, G: Graph](Analysis[T], ABC):
 

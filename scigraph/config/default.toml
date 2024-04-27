@@ -60,6 +60,17 @@
     format.linear = "decimal"
     format.log10 = "power10"
 
+[analyses]
+
+  [analyses.ttest]
+    
+    [analyses.ttest.draw]
+    arm_length = 0.05
+    distance_below = 0.05
+    distance_above = 0.01
+    color = 'k'
+    linewidth = 1
+
 
 [layout]
 

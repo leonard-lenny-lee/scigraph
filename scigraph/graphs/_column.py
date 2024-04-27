@@ -35,11 +35,11 @@ class ColumnGraph(Graph[ColumnTable]):
         self._compile_plot_properties()
 
     def _init_axis(self, dataset_ids: list[str]) -> None:
-        if self._direction is ColumnGraphDirection.VERTICAL:
+        if self._is_vertical:
             self.categorical_axis = CategoricalAxis("x", dataset_ids)
             self.continuous_axis = ContinuousAxis("y")
             self.xaxis, self.yaxis = self.categorical_axis, self.continuous_axis
-        else:  # Horizontal
+        else:
             self.continuous_axis = ContinuousAxis("x")
             self.categorical_axis = CategoricalAxis("y", dataset_ids)
             self.xaxis, self.yaxis = self.continuous_axis, self.categorical_axis
@@ -113,8 +113,8 @@ class ColumnGraph(Graph[ColumnTable]):
         for artist in self._components:
             artist.draw_column(self, ax)
 
-        for analysis in self._linked_analyses:
-            analysis.draw(self, ax)
+        for analysis, kws in self._linked_analyses:
+            analysis.draw(self, ax, **kws)
 
         if self.include_legend:
             self._compose_legend(ax)
@@ -123,6 +123,10 @@ class ColumnGraph(Graph[ColumnTable]):
         self.yaxis._format_axes(ax)
 
         return ax
+
+    @property
+    def _is_vertical(self) -> bool:
+        return self._direction is ColumnGraphDirection.VERTICAL
 
     @classmethod
     def from_xy_table(

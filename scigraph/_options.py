@@ -5,8 +5,8 @@ from typing import Self
 class Option(Enum):
     """Options which are parsed from user provided string literal arguments."""
 
-    def to_str(self) -> str:
-        return self.name.replace("_", " ").lower()
+    def to_str(self, ws_char: str = '_') -> str:
+        return self.name.replace("_", ws_char).lower()
 
     @classmethod
     def from_str(cls, s: str | Self) -> Self:
@@ -35,80 +35,87 @@ class Option(Enum):
 ## Graph Configuration
 
 class ColumnGraphDirection(Option):
-    HORIZONTAL     = auto()
-    VERTICAL       = auto()
+    HORIZONTAL      = auto()
+    VERTICAL        = auto()
 
 
 GroupedGraphDirection = ColumnGraphDirection
 
 class GroupedGraphGrouping(Option):
-    INTERLEAVED    = auto()
-    SEPARATED      = auto()
-    STACKED        = auto()
+    INTERLEAVED     = auto()
+    SEPARATED       = auto()
+    STACKED         = auto()
 
 
 ## Graph Components ##
 
 class PointsType(Option):
-    MEAN           = auto()
-    GEOMETRIC_MEAN = auto()
-    MEDIAN         = auto()
-    INDIVIDUAL     = auto()
-    SWARM          = auto()
+    MEAN            = auto()
+    GEOMETRIC_MEAN  = auto()
+    MEDIAN          = auto()
+    INDIVIDUAL      = auto()
+    SWARM           = auto()
 
 
 class ErrorbarType(Option):
-    SD             = auto()
-    GEOMETRIC_SD   = auto()
-    SEM            = auto()
-    CI95           = auto()
-    RANGE          = auto()
+    SD              = auto()
+    GEOMETRIC_SD    = auto()
+    SEM             = auto()
+    CI95            = auto()
+    RANGE           = auto()
 
 
 class ConnectingLineType(Option):
-    MEAN           = auto()
-    GEOMETRIC_MEAN = auto()
-    MEDIAN         = auto()
-    INDIVIDUAL     = auto()
+    MEAN            = auto()
+    GEOMETRIC_MEAN  = auto()
+    MEDIAN          = auto()
+    INDIVIDUAL      = auto()
 
 
 class BarType(Option):
-    MEAN           = auto()
-    GEOMETRIC_MEAN = auto()
-    MEDIAN         = auto()
+    MEAN            = auto()
+    GEOMETRIC_MEAN  = auto()
+    MEDIAN          = auto()
 
+
+LineType = BarType
 
 ## Analysis Configuration
 
 class RowStatisticsScope(Option):
-    ROW            = auto()
-    DATASET        = auto()
+    ROW             = auto()
+    DATASET         = auto()
 
 
 class DescStatsSubColPolicy(Option):
-    AVERAGE        = auto()
-    SEPARATE       = auto()
-    MERGE          = auto()
+    AVERAGE         = auto()
+    SEPARATE        = auto()
+    MERGE           = auto()
 
 
 class SummaryStatistic(Option):
-    MEAN           = auto()
-    SD             = auto()
-    SEM            = auto()
-    SUM            = auto()
-    MIN            = auto()
-    MAX            = auto()
-    RANGE          = auto()
-    N              = auto()
-    LOWER_QUARTILE = auto()
-    UPPER_QUARTILE = auto()
-    MEDIAN         = auto()
-    CV             = auto()
-    SKEWNESS       = auto()
-    KURTOSIS       = auto()
-    GEOMETRIC_MEAN = auto()
-    GEOMETRIC_SD   = auto()
-    MEAN_CI        = auto()
+    MEAN            = auto()
+    SD              = auto()
+    SEM             = auto()
+    SUM             = auto()
+    MIN             = auto()
+    MAX             = auto()
+    RANGE           = auto()
+    N               = auto()
+    LOWER_QUARTILE  = auto()
+    UPPER_QUARTILE  = auto()
+    MEDIAN          = auto()
+    CV              = auto()
+    SKEWNESS        = auto()
+    KURTOSIS        = auto()
+    GEOMETRIC_MEAN  = auto()
+    GEOMETRIC_SD    = auto()
+    MEAN_CI         = auto()
+
+
+class TTestDirection(Option):
+    TWO_SIDED       = auto()
+    GREATER         = auto()
+    LESS            = auto()
 
 # fmt: on
-LineType = BarType

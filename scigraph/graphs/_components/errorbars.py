@@ -9,9 +9,7 @@ from pandas import DataFrame
 from matplotlib.axes import Axes
 
 from scigraph.graphs.abc import GraphComponent 
-from scigraph._options import (
-    ColumnGraphDirection, ErrorbarType, GroupedGraphDirection
-)
+from scigraph._options import ErrorbarType
 import scigraph.analyses._stats as sgstats
 
 if TYPE_CHECKING:
@@ -44,7 +42,7 @@ class ErrorBars(GraphComponent, ABC):
         x = np.linspace(0, graph.table.ncols - 1, graph.table.ncols)
         yori, yerr = self._prepare_column(graph)
         xerr = [None for _ in range(graph.table.ncols)]
-        if graph._direction is ColumnGraphDirection.HORIZONTAL:
+        if not graph._is_vertical:
             x, yori, xerr, yerr = yori, x, yerr, xerr
 
         for i, id in enumerate(graph.table.dataset_ids):
@@ -65,7 +63,7 @@ class ErrorBars(GraphComponent, ABC):
             props = graph.plot_properties[id].errorbar_kw()
             props.update(**self.kw)
             x_, y_, xerr_, yerr_ = x[i], yori[id], xerr, yerr[id]
-            if graph._direction is GroupedGraphDirection.HORIZONTAL:
+            if not graph._is_vertical:
                 x_, y_, xerr_, yerr_= y_, x_, yerr_, xerr_
             ax.errorbar(x_, y_, xerr=xerr_, yerr=yerr_,
                         **self.kw, **props)

@@ -48,7 +48,7 @@ class ConnectingLine(GraphComponent, ABC):
     def draw_column(self, graph: ColumnGraph,  ax: Axes) -> None:
         x = np.linspace(0, graph.table.ncols - 1, graph.table.ncols)
         y = self._prepare_column(graph)
-        if graph._direction is ColumnGraphDirection.HORIZONTAL:
+        if not graph._is_vertical:
             x, y = y, x
 
         # It doesn't make sense for connecting lines between groups to have
@@ -70,7 +70,7 @@ class ConnectingLine(GraphComponent, ABC):
             props = graph.plot_properties[id].line_kws()
             props.update(**self.kw)
             x_, y_ = x[i], np.array(y[id].values)
-            if graph._direction is GroupedGraphDirection.HORIZONTAL:
+            if not graph._is_vertical:
                 x_, y_ = y_, x_
             artist, = ax.plot(x_, y_, **props)
             graph._add_legend_artist(id, artist)
@@ -182,7 +182,7 @@ class IndividualConnectingLine(ConnectingLine):
         line_kws.update(**self.kw)
         for y in graph.table.values:
             x_ = x
-            if graph._direction is ColumnGraphDirection.HORIZONTAL:
+            if not graph._is_vertical:
                 x_, y = y, x_
             ax.plot(x_, y, **line_kws)
 
@@ -201,7 +201,7 @@ class IndividualConnectingLine(ConnectingLine):
             props.update(**self.kw)
             for y_ in y[:, i*n:(i+1)*n].T:
                 x_ = x[i]
-                if graph._direction is GroupedGraphDirection.HORIZONTAL:
+                if not graph._is_vertical:
                     x_, y_ = y_, x_
                 if self.join_nan:
                     x_, y_ = self._mask_nan(x_, y_)
@@ -224,7 +224,7 @@ class IndividualConnectingLine(ConnectingLine):
                               graph.table._n_replicates).T
             for y_ in row:
                 x_ = x
-                if graph._direction is GroupedGraphDirection.HORIZONTAL:
+                if not graph._is_vertical:
                     x_, y_ = y_, x_
                 if self.join_nan:
                     x_, y_ = self._mask_nan(x_, y_)

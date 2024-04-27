@@ -42,11 +42,11 @@ class GroupedGraph(Graph[GroupedTable]):
             repeats = len(dataset_ids)
         else:
             repeats = 1
-        if self._direction is GroupedGraphDirection.VERTICAL:
+        if self._is_vertical:
             self.categorical_axis = CategoricalAxis("x", row_names, repeats=repeats)
             self.continuous_axis = ContinuousAxis("y")
             self.xaxis, self.yaxis = self.categorical_axis, self.continuous_axis
-        else:  # Horizontal
+        else:
             self.continuous_axis = ContinuousAxis("x")
             self.categorical_axis = CategoricalAxis("y", row_names, repeats=repeats)
             self.xaxis, self.yaxis = self.continuous_axis, self.categorical_axis
@@ -120,8 +120,8 @@ class GroupedGraph(Graph[GroupedTable]):
         for artist in self._components:
             artist.draw_grouped(self, ax)
 
-        for analysis in self._linked_analyses:
-            analysis.draw(self, ax)
+        for analysis, kws in self._linked_analyses:
+            analysis.draw(self, ax, **kws)
 
         if self.include_legend:
             self._compose_legend(ax)
@@ -130,6 +130,10 @@ class GroupedGraph(Graph[GroupedTable]):
         self.yaxis._format_axes(ax)
 
         return ax
+
+    @property
+    def _is_vertical(self) -> bool:
+        return self._direction is GroupedGraphDirection.VERTICAL
 
     def _x(self) -> NDArray:
         match self._grouping:
