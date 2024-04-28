@@ -123,4 +123,10 @@ class WilcoxonZeroMethod(Option):
     WILCOX          = auto()
     PRATT           = auto()
 
+
+class ConstraintType(Option):
+    EQUAL           = auto()
+    GREATER         = auto()
+    LESS            = auto()
+
 # fmt: on

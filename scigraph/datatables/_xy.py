@@ -100,7 +100,7 @@ class XYTable(DataTable, RowStatsI):
 
         if dataset_names is None:
             dataset_names = self._default_names(n_datasets)
-        self._dataset_names = dataset_names
+        self.dataset_names = dataset_names
 
         # Modifiable attributes
         if x_title is None:
