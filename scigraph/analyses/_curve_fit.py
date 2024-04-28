@@ -13,9 +13,10 @@ from pandas import DataFrame, Index, MultiIndex
 from scipy.optimize import curve_fit
 import scipy.stats
 
-from .abc import GraphableAnalysis
+from scigraph.analyses.abc import GraphableAnalysis
 from scigraph._log import LOG
-from scigraph._options import ConstraintType
+from scigraph._options import ConstraintType, CurveFitBands
+from scigraph.config import SG_DEFAULTS
 
 if TYPE_CHECKING:
     from scigraph.datatables import XYTable
@@ -71,7 +72,7 @@ class CurveFit(GraphableAnalysis, ABC):
         index.extend([("Goodness of Fit", stat)
                       for stat in ["dof", "r2", "rss", "sy_x", "n"]])
         index = MultiIndex.from_tuples(index)
-        columns = Index(self.table.dataset_ids)
+        columns = Index(self._include)
         self._pretty_result = DataFrame(data.T, index, columns)
 
         return self._pretty_result
@@ -165,9 +166,17 @@ class CurveFit(GraphableAnalysis, ABC):
         x_min: int | None = None,
         x_max: int | None = None,
         n_points: int = 1000,
+        bands: Optional[Literal["confidence", "prediction"]] = None,
+        line_kws: Optional[dict] = None,
+        band_kws: Optional[dict] = None,
         *args,
         **kwargs,
     ) -> None:
+        if line_kws is None:
+            line_kws = {}
+        if band_kws is None:
+            band_kws = {}
+
         # Determine x limits
         x = self.table.x_values.flatten()
         if graph.xaxis.scale == "log10":
@@ -187,13 +196,67 @@ class CurveFit(GraphableAnalysis, ABC):
             case _:
                 raise NotImplementedError
 
-        for dataset_id, r in self._result.items():
+        for id, r in self._result.items():
             if not r.converged:
                 continue
-            props = graph.plot_properties[dataset_id]
-            y = self.interpolate(x, dataset_id)
-            line, = ax.plot(x, y, *args, **kwargs, **props.line_kws())
-            graph._add_legend_artist(dataset_id, line)
+
+            props = graph.plot_properties[id]
+            def_line_kws = props.line_kws()
+            def_line_kws.update(**line_kws)
+
+            y = self.interpolate(x, id)
+            line, = ax.plot(x, y, **def_line_kws)
+            graph._add_legend_artist(id, line)
+
+            if bands is None:
+                continue
+
+            def_band_kws = SG_DEFAULTS["analyses.curve_fit.bands"]
+            def_band_kws["color"] = props.color
+            def_band_kws.update(**band_kws)
+            
+            y = self._calculate_bands(x, id, CurveFitBands.from_str(bands))
+            ax.fill_between(x, *y, **def_band_kws)
+            
+    def _calculate_bands(
+        self,
+        x: NDArray,
+        dataset_id: str,
+        bands: CurveFitBands,
+    ) -> tuple[NDArray, NDArray]:
+        """Use the delta method to calculate confidence bands."""
+        r = self._result[dataset_id]
+        y = self._f(x, *r.popt)
+
+        # Calculate derivative gradients
+        step = 1e-8
+        glx = np.empty((len(x), len(r.popt)))
+
+        for i, p in enumerate(r.popt):
+            popt_ = np.copy(r.popt)
+            gradients: list[NDArray] = []
+
+            for sign in (1, -1):
+                popt_[i] = (1 + step * sign) * p
+                y_ = self._f(x, *popt_)
+                dy = y_ - y
+                dpopt = popt_[i] - p
+                dydp = dy / dpopt
+                gradients.append(dydp)
+
+            g_up, g_down = gradients  # Use centered gradient
+            glx[:, i] = (g_up + g_down) / 2
+
+        c = np.sum(glx @ r.pcov * glx, axis=1)
+        t = scipy.stats.t.ppf((1 + self._confidence_level) / 2, df=r.dof)
+
+        if bands is CurveFitBands.CONFIDENCE:
+            delta = np.sqrt(c) * t
+        else:  # Prediction bands
+            mse = r.rss / r.dof
+            delta = np.sqrt(c + mse) * t
+
+        return y - delta, y + delta
 
     @staticmethod
     @abstractmethod

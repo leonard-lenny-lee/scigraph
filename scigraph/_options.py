@@ -129,4 +129,9 @@ class ConstraintType(Option):
     GREATER         = auto()
     LESS            = auto()
 
+
+class CurveFitBands(Option):
+    CONFIDENCE      = auto()
+    PREDICTION      = auto()
+
 # fmt: on

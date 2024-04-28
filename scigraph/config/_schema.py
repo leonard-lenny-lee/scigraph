@@ -122,6 +122,13 @@ SCHEMA: Schema = {
                 "color": String,
                 "linewidth": Num,
             }
+        },
+        "curve_fit": {
+            "bands": {
+                "alpha": Num,
+                "linewidth": Num,
+                "linestyle": String,
+            }
         }
     },
     "layout": {

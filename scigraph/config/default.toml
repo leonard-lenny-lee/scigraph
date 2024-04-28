@@ -71,6 +71,13 @@
     color = 'k'
     linewidth = 1
 
+  [analyses.curve_fit]
+
+    [analyses.curve_fit.bands]
+      alpha = 0.2
+      linewidth = 0.5
+      linestyle = "--"
+
 
 [layout]
 
