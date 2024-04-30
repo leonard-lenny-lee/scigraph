@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-__all__ = ["CurveFit"]
+__all__ = ["CurveFit", "Constant", "Linear", "Polynomial", "ExponentialDecay",
+           "PiecewiseConstantExponentialDecay", "ExponentialGrowth",
+           "Gaussian", "Lorentzian", "Sinusoid", "Logistic3Parameter",
+           "Logistic4Parameter", "Logistic5Parameter"]
 
 from abc import ABC, abstractmethod
-from typing import Literal, NamedTuple, Optional, override, TYPE_CHECKING
 import inspect
+from typing import Literal, NamedTuple, Optional, override, TYPE_CHECKING
 
 from matplotlib.axes import Axes
 import numpy as np
@@ -35,7 +38,7 @@ class CurveFit(GraphableAnalysis, ABC):
         self._table = table
 
         # Fit attributes
-        self.p0: NDArray | None = None
+        self._p0 = np.full(self._n_params, 1)
         self._upper_bounds = np.full(self._n_params, +np.inf)
         self._lower_bounds = np.full(self._n_params, -np.inf)
         self._bounds = self._lower_bounds, self._upper_bounds
@@ -85,13 +88,7 @@ class CurveFit(GraphableAnalysis, ABC):
         *,
         epsilon: float = 0.01,
     ) -> None:
-        try:
-            i = self._params().index(param)
-        except ValueError as e:
-            raise ValueError(
-                f"{param} is not a valid parameter. Valid options: "
-                f"{", ".join(self._params())}"
-            ) from e
+        i = self._get_param_index(param)
 
         constraint_t = ConstraintType.from_str(ty)
         match constraint_t:
@@ -103,6 +100,11 @@ class CurveFit(GraphableAnalysis, ABC):
                 self._lower_bounds[i] = value
             case ConstraintType.LESS:
                 self._upper_bounds[i] = value
+
+    def add_initial_values(self, **values: float) -> None:
+        for param, val in values.items():
+            i = self._get_param_index(param)
+            self._p0[i] = val
 
     def fit(self) -> dict[str, CurveFitResult]:
         if self.table.n_x_replicates > 1:
@@ -128,7 +130,7 @@ class CurveFit(GraphableAnalysis, ABC):
             assert len(x) == len(y)
 
             try:
-                popt, pcov = curve_fit(self._f, x, y, p0=self.p0,
+                popt, pcov = curve_fit(self._f, x, y, p0=self._p0,
                                        bounds=self._bounds, nan_policy="omit")
             except RuntimeError as e:
                 LOG.warn(f"Curve fit failed for {id}. SciPy error: {e}")
@@ -258,6 +260,16 @@ class CurveFit(GraphableAnalysis, ABC):
 
         return y - delta, y + delta
 
+    def _get_param_index(self, name: str) -> int:
+        try:
+            return self._params().index(name)
+        except ValueError as e:
+            raise ValueError(
+                f"{name} is not a valid parameter. Valid options: "
+                f"{", ".join(self._params())}"
+            ) from e
+
+
     @staticmethod
     @abstractmethod
     def _f(x: NDArray, *args: float) -> NDArray: ...
@@ -306,53 +318,133 @@ class CurveFitResult(NamedTuple):
     converged: bool
 
 
+## Models ##
+
 class Constant(CurveFit):
 
     @override
     @staticmethod
-    def _f(x: NDArray, constant: float) -> NDArray:  # type: ignore
-        return np.full(x.shape, constant)
+    def _f(x: NDArray, c: float) -> NDArray:  # type: ignore
+        return c + x * 0
 
 
-class SimpleLinearRegression(CurveFit):
+class Linear(CurveFit):
 
     @override
     @staticmethod
-    def _f(x: NDArray, slope: float, intercept: float) -> NDArray:  # type: ignore
-        return x * slope + intercept
+    def _f(x: NDArray, m: float, c: float) -> NDArray:  # type: ignore
+        return m * x + c
 
 
-class OnePhaseDecay(CurveFit):
+class Polynomial(CurveFit):
+
+    def __init__(
+        self,
+        table: XYTable,
+        order: int,
+        include: list[str] | None = None,
+        exclude: list[str] | None = None,
+        confidence_level: float = 0.95,
+    ) -> None:
+        self._order = order
+        super().__init__(table, include, exclude, confidence_level)
+
+    @override
+    def _params(self) -> tuple[str, ...]:
+        return tuple([f"a{n}" for n in range(self._order + 1)])
+
+    @property
+    @override
+    def _n_params(self) -> int:
+        return self._order + 1
+
+    @override
+    @staticmethod
+    def _f(x: NDArray, *args: float) -> NDArray:
+        out = np.zeros(len(x))
+        for degree, coef in enumerate(args):
+            out += coef * x ** degree
+        return out
+
+
+class ExponentialDecay(CurveFit):
     
     @override
     @staticmethod
-    def _f(x: NDArray, y0: float, plateau: float, k: float) -> NDArray:  # type: ignore
-        return (y0 - plateau) * np.exp(-k * x) + plateau
+    def _f(x: NDArray, y0: float, c: float, k: float) -> NDArray:  # type: ignore
+        return c + (y0 - c) * np.exp(-k * x)
 
 
-class AgonistResponse4Parameter(CurveFit):
-
-    @override
-    @staticmethod
-    def _f(  # type: ignore
-        x: NDArray,
-        hill: float,
-        top: float,
-        bottom: float,
-        ec50: float
-    ) -> NDArray:
-        return bottom+(x**hill)*(top-bottom)/(x**hill+ec50**hill)
-
-
-class InhibitorResponse4Parameter(CurveFit):
+class PiecewiseConstantExponentialDecay(CurveFit):
 
     @override
     @staticmethod
-    def _f(  # type: ignore
-        x: NDArray,
-        hill: float,
-        top: float,
-        bottom: float,
-        ic50: float
-    ) -> NDArray:
-        return bottom+(top-bottom)/(1+(ic50/x)**hill)
+    def _f(x: NDArray, x0: float, y0: float, c: float, k: float) -> NDArray:  # type: ignore
+        return np.piecewise(x, [x < x0, x >= x0],
+                            [y0, lambda x: c + (y0 - c) * np.exp(-k * (x - x0))])
+
+
+class ExponentialGrowth(CurveFit):
+
+    @override
+    @staticmethod
+    def _f(x: NDArray, y0: float, k: float) -> NDArray:  # type: ignore
+        return y0 * np.exp(k * x)
+
+
+class Gaussian(CurveFit):
+
+    @override
+    @staticmethod
+    def _f(x: NDArray, a: float, m: float, s: float) -> NDArray:  # type: ignore
+        return a * np.exp(-0.5 * ((x - m) / s) ** 2)
+
+
+class LogNormal(CurveFit):
+
+    @override
+    @staticmethod
+    def _f(x: NDArray, a: float, gm: float, gsd: float) -> NDArray:  # type: ignore
+        return (a / x) * np.exp(-0.5 * (np.log(x / gm) / np.log(gsd)) ** 2)
+
+
+class Lorentzian(CurveFit):
+
+    @override
+    @staticmethod
+    def _f(x: NDArray, a: float, x0: float, g: float) -> NDArray:  # type: ignore
+        return a / (1 + ((x - x0) / g) ** 2)
+
+
+class Sinusoid(CurveFit):
+
+    @override
+    @staticmethod
+    def _f(x: NDArray, a: float, f: float, phase: float, c: float) -> NDArray:  # type: ignore
+        return a * np.sin(2 * np.pi * f * x + phase) + c
+
+
+class Logistic3Parameter(CurveFit):
+
+    @override
+    @staticmethod
+    def _f(x: NDArray, top: float, bottom: float, ec50: float) -> NDArray:  # type: ignore
+        return bottom + x * (top - bottom) / (ec50 + x)
+
+
+class Logistic4Parameter(CurveFit):
+
+    @override
+    @staticmethod
+    def _f(x: NDArray, slope: float, top: float, bottom: float,  # type: ignore
+           ec50: float) -> NDArray:
+        return bottom + (x ** slope) * (top - bottom) / (x ** slope + ec50 ** slope)
+
+
+class Logistic5Parameter(CurveFit):
+
+    @override
+    @staticmethod
+    def _f(x: NDArray, slope: float, top: float, bottom: float,  # type: ignore
+           ec50: float, s: float) -> NDArray:
+        return bottom + ((top - bottom) / ((1 + (2 ** (1 / s) - 1) * ((ec50 / x) ** slope)) ** s))

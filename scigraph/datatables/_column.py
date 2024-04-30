@@ -10,7 +10,7 @@ from scigraph.analyses.abc import DescStatsI
 from scigraph.config import SG_DEFAULTS
 
 if TYPE_CHECKING:
-    from numpy.typing import ArrayLike
+    from numpy.typing import ArrayLike, NDArray
 
     from scigraph.analyses import DescriptiveStatistics
     from scigraph.analyses._stats import SummaryStatFn
@@ -22,7 +22,7 @@ class ColumnTable(DataTable, DescStatsI):
     Column tables have one grouping variable, with each group defined by
     a column.
     """
-    
+
     def __init__(
         self,
         values: ArrayLike,
@@ -83,7 +83,7 @@ class ColumnTable(DataTable, DescStatsI):
         return np.apply_along_axis(f, axis=0, arr=self._values)
 
     ## Graph factories ##
-    
+
     def create_column_graph(
         self,
         direction: Literal["vertical", "horizontal"]
@@ -112,7 +112,7 @@ class ColumnTable(DataTable, DescStatsI):
     @override
     def _desc_stats_average(self, *fns: SummaryStatFn) -> DataFrame:
         return self._desc_stats_separate(*fns)
-    
+
     @override
     def _desc_stats_merge(self, *fns: SummaryStatFn) -> DataFrame:
         return self._desc_stats_separate(*fns)
