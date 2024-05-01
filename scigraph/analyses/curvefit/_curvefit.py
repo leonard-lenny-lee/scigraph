@@ -7,13 +7,14 @@ __all__ = ["CurveFit", "Constant", "Linear", "Polynomial", "ExponentialDecay",
 
 from abc import ABC, abstractmethod
 import inspect
+import itertools
 from typing import Literal, NamedTuple, Optional, override, TYPE_CHECKING
 
 from matplotlib.axes import Axes
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 from pandas import DataFrame, Index, MultiIndex
-from scipy.optimize import curve_fit
+from scipy.optimize import curve_fit, root_scalar
 import scipy.stats
 
 from scigraph.analyses.abc import GraphableAnalysis
@@ -70,7 +71,7 @@ class CurveFit(GraphableAnalysis, ABC):
         data = np.vstack(data)
         index = [(category, param)
                  for category in ("Best Fit Params",
-                                 f"CI {self._confidence_level:.0%}")
+                                  f"CI {self._confidence_level:.0%}")
                  for param in self._params()]
         index.extend([("Goodness of Fit", stat)
                       for stat in ["dof", "r2", "rss", "sy_x", "n"]])
@@ -139,7 +140,7 @@ class CurveFit(GraphableAnalysis, ABC):
                                    np.nan, n, False)
                 result[id] = r
                 continue
-            
+
             rss = ((y - self._f(x, *popt)) ** 2).sum()
             tss = ((y - y.mean()) ** 2).sum()
             r2 = 1 - (rss / tss)
@@ -155,10 +156,72 @@ class CurveFit(GraphableAnalysis, ABC):
         self._result = result
         return self._result
 
-    def interpolate(self, x: NDArray, dataset: str) -> NDArray:
+    def predict(self, x: NDArray, dataset: str) -> NDArray:
         self._access_check(dataset)
         popt = self._result[dataset].popt
         return self._f(x, *popt)
+
+    def interpolate(
+        self,
+        y: NDArray | ArrayLike | float,
+        dataset: str,
+        n_steps: int = 1000,
+        log_step: bool = False,
+        xlims: Optional[tuple[float, float]] = None,
+        **kwargs
+    ) -> NDArray:
+        self._access_check(dataset)
+        popt = self._result[dataset].popt
+
+        if isinstance(y, float | int):
+            y = [y]
+
+        y = np.array(y)
+        out = np.empty(y.size)
+
+        if xlims is None:
+            xlims = self._table.x_values.min(), self._table.x_values.max()
+
+        xrange = xlims[1] - xlims[0]
+        ext_lims = xlims[0] - xrange * 0.5, xlims[1] + xrange * 0.5
+
+        bkp_f = np.logspace if log_step else np.linspace
+        bkps = bkp_f(*xlims, n_steps)
+        lower_ext_bkps = bkp_f(ext_lims[0], xlims[0], round(n_steps / 0.5))
+        upper_ext_bkps = bkp_f(xlims[1], ext_lims[1], round(n_steps / 0.5))
+
+        for i, v in enumerate(y):
+            f = lambda x: self._f(x, *popt) - v
+
+            def scan(bkps: NDArray) -> bool:
+                for bracket in itertools.pairwise(bkps):
+                    try:
+                        sol = root_scalar(f, bracket=bracket, method="brentq",
+                                          **kwargs)
+                    except ValueError:
+                        continue
+
+                    if sol.converged:
+                        out[i] = sol.root
+                        return True
+                return False
+            
+            if scan(bkps):
+                continue
+
+            LOG.warn(f"Failed to interpolate {v} in xrange {xlims}. "
+                     f"Extending scan range to {ext_lims}")
+
+            if scan(lower_ext_bkps) or scan(upper_ext_bkps):
+                continue
+
+            # Failed to find roots
+            LOG.warn(f"Failed to interpolate {v} in extended xrange.")
+            out[i] = np.nan
+
+        out = out.reshape(y.shape)
+
+        return out
 
     @override
     def draw(
@@ -206,7 +269,7 @@ class CurveFit(GraphableAnalysis, ABC):
             def_line_kws = props.line_kws()
             def_line_kws.update(**line_kws)
 
-            y = self.interpolate(x, id)
+            y = self._f(x, *r.popt)
             line, = ax.plot(x, y, **def_line_kws)
             graph._add_legend_artist(id, line)
 
@@ -216,10 +279,10 @@ class CurveFit(GraphableAnalysis, ABC):
             def_band_kws = SG_DEFAULTS["analyses.curve_fit.bands"]
             def_band_kws["color"] = props.color
             def_band_kws.update(**band_kws)
-            
+
             y = self._calculate_bands(x, id, CurveFitBands.from_str(bands))
             ax.fill_between(x, *y, **def_band_kws)
-            
+
     def _calculate_bands(
         self,
         x: NDArray,
@@ -269,7 +332,6 @@ class CurveFit(GraphableAnalysis, ABC):
                 f"{", ".join(self._params())}"
             ) from e
 
-
     @staticmethod
     @abstractmethod
     def _f(x: NDArray, *args: float) -> NDArray: ...
@@ -288,7 +350,7 @@ class CurveFit(GraphableAnalysis, ABC):
     ) -> None:
         if include is not None and exclude is not None:
             raise ValueError("Include and exclude cannot both be specified.")
-        
+
         if include is not None:
             self._include = include
         elif exclude is not None:
@@ -368,7 +430,7 @@ class Polynomial(CurveFit):
 
 
 class ExponentialDecay(CurveFit):
-    
+
     @override
     @staticmethod
     def _f(x: NDArray, y0: float, c: float, k: float) -> NDArray:  # type: ignore
