@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-__all__ = ["CurveFit", "Constant", "Linear", "Polynomial", "ExponentialDecay",
-           "PiecewiseConstantExponentialDecay", "ExponentialGrowth",
-           "Gaussian", "Lorentzian", "Sinusoid", "Logistic3Parameter",
-           "Logistic4Parameter", "Logistic5Parameter"]
+__all__ = ["CurveFit"]
 
 from abc import ABC, abstractmethod
 import inspect
@@ -43,6 +40,7 @@ class CurveFit(GraphableAnalysis, ABC):
         self._upper_bounds = np.full(self._n_params, +np.inf)
         self._lower_bounds = np.full(self._n_params, -np.inf)
         self._bounds = self._lower_bounds, self._upper_bounds
+        self._is_bound = np.full(self._n_params, False)
         self._init_include_list(include, exclude)
         self._confidence_level = confidence_level
 
@@ -87,7 +85,7 @@ class CurveFit(GraphableAnalysis, ABC):
         ty: Literal['equal', "greater", "less"],
         value: float,
         *,
-        epsilon: float = 0.01,
+        epsilon: float = 1e-8,
     ) -> None:
         i = self._get_param_index(param)
 
@@ -97,14 +95,22 @@ class CurveFit(GraphableAnalysis, ABC):
                 err = abs(value) * epsilon / 2
                 self._upper_bounds[i] = value + err
                 self._lower_bounds[i] = value - err
+                self._p0[i] = value
+                self._is_bound[i] = True
             case ConstraintType.GREATER:
                 self._lower_bounds[i] = value
+                if self._p0[i] < value:
+                    self._p0[i] = value
             case ConstraintType.LESS:
                 self._upper_bounds[i] = value
+                if self._p0[i] > value:
+                    self._p0[i] = value
 
     def add_initial_values(self, **values: float) -> None:
         for param, val in values.items():
             i = self._get_param_index(param)
+            if not self._lower_bounds[i] <= val <= self._upper_bounds[i]:
+                val = self._lower_bounds[i]
             self._p0[i] = val
 
     def fit(self) -> dict[str, CurveFitResult]:
@@ -127,7 +133,7 @@ class CurveFit(GraphableAnalysis, ABC):
             nan_mask = ~np.isnan(y)
             x, y = x_[nan_mask], y[nan_mask]
             n = len(y)
-            dof = n - self._n_params
+            dof = n - self._n_params + self._is_bound.sum()
             assert len(x) == len(y)
 
             try:
@@ -332,6 +338,15 @@ class CurveFit(GraphableAnalysis, ABC):
                 f"{", ".join(self._params())}"
             ) from e
 
+    def _get_dataset_index(self, name: str) -> int:
+        try:
+            return self._table.dataset_ids.index(name)
+        except ValueError as e:
+            raise ValueError(
+                f"{name} is not a valid dataset name. Valid options: "
+                f"{", ".join(self._table.dataset_ids)}"
+            ) from e
+
     @staticmethod
     @abstractmethod
     def _f(x: NDArray, *args: float) -> NDArray: ...
@@ -359,6 +374,8 @@ class CurveFit(GraphableAnalysis, ABC):
         else:
             self._include = self._table.dataset_ids
 
+        self._n_included = len(self._include)
+
     def _access_check(self, dataset: Optional[str] = None) -> None:
         if not hasattr(self, "_result"):
             raise AttributeError("Curve has not been fitted. Call .fit()")
@@ -378,135 +395,3 @@ class CurveFitResult(NamedTuple):
     sy_x: float
     n: int
     converged: bool
-
-
-## Models ##
-
-class Constant(CurveFit):
-
-    @override
-    @staticmethod
-    def _f(x: NDArray, c: float) -> NDArray:  # type: ignore
-        return c + x * 0
-
-
-class Linear(CurveFit):
-
-    @override
-    @staticmethod
-    def _f(x: NDArray, m: float, c: float) -> NDArray:  # type: ignore
-        return m * x + c
-
-
-class Polynomial(CurveFit):
-
-    def __init__(
-        self,
-        table: XYTable,
-        order: int,
-        include: list[str] | None = None,
-        exclude: list[str] | None = None,
-        confidence_level: float = 0.95,
-    ) -> None:
-        self._order = order
-        super().__init__(table, include, exclude, confidence_level)
-
-    @override
-    def _params(self) -> tuple[str, ...]:
-        return tuple([f"a{n}" for n in range(self._order + 1)])
-
-    @property
-    @override
-    def _n_params(self) -> int:
-        return self._order + 1
-
-    @override
-    @staticmethod
-    def _f(x: NDArray, *args: float) -> NDArray:
-        out = np.zeros(len(x))
-        for degree, coef in enumerate(args):
-            out += coef * x ** degree
-        return out
-
-
-class ExponentialDecay(CurveFit):
-
-    @override
-    @staticmethod
-    def _f(x: NDArray, y0: float, c: float, k: float) -> NDArray:  # type: ignore
-        return c + (y0 - c) * np.exp(-k * x)
-
-
-class PiecewiseConstantExponentialDecay(CurveFit):
-
-    @override
-    @staticmethod
-    def _f(x: NDArray, x0: float, y0: float, c: float, k: float) -> NDArray:  # type: ignore
-        return np.piecewise(x, [x < x0, x >= x0],
-                            [y0, lambda x: c + (y0 - c) * np.exp(-k * (x - x0))])
-
-
-class ExponentialGrowth(CurveFit):
-
-    @override
-    @staticmethod
-    def _f(x: NDArray, y0: float, k: float) -> NDArray:  # type: ignore
-        return y0 * np.exp(k * x)
-
-
-class Gaussian(CurveFit):
-
-    @override
-    @staticmethod
-    def _f(x: NDArray, a: float, m: float, s: float) -> NDArray:  # type: ignore
-        return a * np.exp(-0.5 * ((x - m) / s) ** 2)
-
-
-class LogNormal(CurveFit):
-
-    @override
-    @staticmethod
-    def _f(x: NDArray, a: float, gm: float, gsd: float) -> NDArray:  # type: ignore
-        return (a / x) * np.exp(-0.5 * (np.log(x / gm) / np.log(gsd)) ** 2)
-
-
-class Lorentzian(CurveFit):
-
-    @override
-    @staticmethod
-    def _f(x: NDArray, a: float, x0: float, g: float) -> NDArray:  # type: ignore
-        return a / (1 + ((x - x0) / g) ** 2)
-
-
-class Sinusoid(CurveFit):
-
-    @override
-    @staticmethod
-    def _f(x: NDArray, a: float, f: float, phase: float, c: float) -> NDArray:  # type: ignore
-        return a * np.sin(2 * np.pi * f * x + phase) + c
-
-
-class Logistic3Parameter(CurveFit):
-
-    @override
-    @staticmethod
-    def _f(x: NDArray, top: float, bottom: float, ec50: float) -> NDArray:  # type: ignore
-        return bottom + x * (top - bottom) / (ec50 + x)
-
-
-class Logistic4Parameter(CurveFit):
-
-    @override
-    @staticmethod
-    def _f(x: NDArray, slope: float, top: float, bottom: float,  # type: ignore
-           ec50: float) -> NDArray:
-        return bottom + (x ** slope) * (top - bottom) / (x ** slope + ec50 ** slope)
-
-
-class Logistic5Parameter(CurveFit):
-
-    @override
-    @staticmethod
-    def _f(x: NDArray, slope: float, top: float, bottom: float,  # type: ignore
-           ec50: float, s: float) -> NDArray:
-        return bottom + ((top - bottom) / ((1 + (2 ** (1 / s) - 1) * ((ec50 / x) ** slope)) ** s))
