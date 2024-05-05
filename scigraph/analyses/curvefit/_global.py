@@ -2,6 +2,7 @@ from __future__ import annotations
 
 __all__ = ["GlobalCurveFit"]
 
+import itertools
 from typing import TYPE_CHECKING, NamedTuple, Optional, Callable, Literal, override
 
 import numpy as np
@@ -20,20 +21,40 @@ if TYPE_CHECKING:
 
 class GlobalCurveFit(Analysis):
 
-    def __init__(self, model: CurveFit) -> None:
+    def __init__(
+        self,
+        model: CurveFit,
+        inherit: bool = True,
+    ) -> None:
         self._model = model
+        self._inherit = inherit
         self._equal_params: list[str] = []
-        self._p0 = np.tile(self._model._p0, self._model._n_included)
+        self._p0 = self._compile_p0()
         self._bounds = self._compile_bounds()
         self._is_bound = np.tile(model._is_bound, self._model._n_included)
         self._is_constrained = np.full(self._model._n_params, False)
 
     def add_equality_constraint(self, param: str) -> None:
-        i = self._model._get_param_index(param) 
+        """Add an equality constraint to the minimization problem.
 
-        if param not in self._equal_params:
-            self._equal_params.append(param)
-        
+        Constrain a parameter so all the datasets must share the same value.
+
+        Args:
+            param: The name of the parameter to constrain.
+        """
+        if param in self._equal_params:
+            return
+
+        i = self._model._get_param_index(param)
+
+        if any([self._is_bound[ds_i * self._model._n_params + i]
+                for ds_i in range(self._model._n_included)]):
+            LOG.warn("Equality constraint has been ignored as it is already "
+                     "bounded. A value cannot be bound and constrained "
+                     "simultaneously.")
+            return
+
+        self._equal_params.append(param)
         self._is_constrained[i] = True
 
     def add_initial_value(self, param: str, val: float,
@@ -59,13 +80,18 @@ class GlobalCurveFit(Analysis):
         epsilon: float = 1e-8,
     ) -> None:
         p_i = self._model._get_param_index(param)
+        constraint_t = ConstraintType.from_str(ty)
+
+        if constraint_t is ConstraintType.EQUAL and self._is_constrained[p_i]:
+            LOG.warn("Equality bound has been ignored as it is already "
+                     "constrained. A value cannot be bound and constrained "
+                     "simulataneously.")
+            return
 
         if dataset is not None:
             ds_indices = [self._model._get_dataset_index(dataset)]
         else:  # Apply to all
             ds_indices = list(range(self._model._n_included))
-
-        constraint_t = ConstraintType.from_str(ty)
 
         for ds_i in ds_indices:
             i = ds_i * self._model._n_params + p_i
@@ -95,14 +121,18 @@ class GlobalCurveFit(Analysis):
         r = self.fit()
 
         # Format into DataFrame for nice rendering
-        popt = r.popt.reshape(2, 3)
+        values = []
+        popt = r.popt.reshape(self._model._n_included, self._model._n_params)
         shared = popt[0].copy()
         shared[~self._is_constrained] = np.nan
         popt = np.vstack((popt, shared)).T
+        values.append(popt)
 
         stats = np.full((4, popt.shape[1]), np.nan)
         stats[:, -1] = [r.dof, r.r2, r.rss, r.sy_x]
-        values = np.vstack((popt, stats))
+        values.append(stats)
+
+        values = np.vstack(values)
 
         columns = self.table.dataset_ids.copy()
         columns.append("Global (Shared)")
@@ -124,12 +154,16 @@ class GlobalCurveFit(Analysis):
 
         if not result.success:
             LOG.warn("Global curve fit failed.")
-            LOG.warn(f"SciPy message: {result.message}")
-        
+            LOG.warn(f"SciPy minimzation error: {result.message}")
+
         y = self.table.y_values
         y = y[~np.isnan(y)]
         n = y.size
+
+        # Assertion is required to ensure dof calculation is valid
+        assert all(~(np.tile(self._is_constrained, self._model._n_included) & self._is_bound))  
         dof = n - self._n_params + self._is_bound.sum() + self._is_constrained.sum()
+
         rss = result.fun
         tss = ((y - y.mean()) ** 2).sum()
         r2 = 1 - (rss / tss)
@@ -137,6 +171,68 @@ class GlobalCurveFit(Analysis):
         self._result = GlobalCurveFitResult(result.x, dof, r2, rss, sy_x)
         
         return self._result
+
+    def estimate_confidence_intervals(
+        self,
+        confidence_level: float = 0.95,
+        n_samples: int = 1000,
+        sampling_ratio: float = 1.0,
+    ) -> DataFrame:
+        xy = self._compile_xy()
+        obj = self._compile_cost_fn()
+        constraints = self._compile_constraints()
+        parameters = np.full((n_samples, self._n_params), np.nan)
+        n_failures = 0
+
+        for i in range(n_samples):
+
+            bootstrap_data = []
+
+            for x, y in itertools.batched(xy, 2):
+                size = round(len(x) * sampling_ratio)
+                idx = np.random.choice(len(x), size=size, replace=True)
+                x, y = x[idx], y[idx]
+                bootstrap_data.append(x)
+                bootstrap_data.append(y)
+
+            bootstrap_data = tuple(bootstrap_data)
+
+            result = minimize(obj, self._p0, args=bootstrap_data,
+                              bounds=self._bounds, constraints=constraints,
+                              method="SLSQP")
+            
+            if not result.success:
+                n_failures += 1
+                continue
+
+            parameters[i] = result.x
+
+        if n_failures:
+            failure_rate = n_failures / n_samples
+            LOG.warn(f"Bootstrap minimization failures: {n_failures} / "
+                     f"{n_samples} ({failure_rate:.2%})")
+
+        cl_upper = (1 + confidence_level) / 2
+        cl_lower = 1 - cl_upper
+        ci = np.nanquantile(parameters, [cl_lower, cl_upper],
+                                              axis=0)
+
+        # Reshape and reformat into DataFrame
+        ci = ci.flatten('F').reshape(self._model._n_included,
+                                     self._model._n_params * 2).T
+        idx = list(range(0, len(ci), 2)) + list(range(1, len(ci), 2))
+        ci = ci[idx]
+
+        shared = ci.T[0].copy()
+        shared[np.tile(~self._is_constrained, 2)] = np.nan
+        ci = np.hstack((ci, np.atleast_2d(shared).T))
+
+        columns = self.table.dataset_ids.copy()
+        columns.append("Global (Shared)")
+        index = MultiIndex.from_product((["Lower" , "Upper"],
+                                         self._model._params()))
+
+        return DataFrame(ci, index, Index(columns)) 
 
     def _compile_xy(self) -> tuple[NDArray, ...]:
         """Return the x and y arrays to pass onto the cost function.
@@ -181,7 +277,10 @@ class GlobalCurveFit(Analysis):
 
         return obj
 
-    def _compile_constraints(self) -> NonlinearConstraint:
+    def _compile_constraints(self) -> NonlinearConstraint | None:
+        if not self._equal_params:
+            return None
+
         n_params = self._model._n_params
         bounds = np.zeros(self.table.n_datasets - 1)
 
@@ -197,7 +296,17 @@ class GlobalCurveFit(Analysis):
         constraint = NonlinearConstraint(constraint_f, bounds, bounds)
         return constraint
 
+    def _compile_p0(self) -> NDArray:
+        if self._inherit:
+            p0 = np.tile(self._model._p0, self._model._n_included)
+        else:
+            p0 = np.ones(self._n_params)
+        return p0
+
     def _compile_bounds(self) -> list[list[float]]:
+        if not self._inherit:
+            return [[-np.inf, +np.inf] for _ in range(self.table.n_datasets)]
+
         bounds = []
 
         for _ in range(self.table.n_datasets):
