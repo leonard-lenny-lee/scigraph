@@ -36,11 +36,11 @@ class CurveFit(GraphableAnalysis, ABC):
         self._table = table
 
         # Fit attributes
-        self._p0 = np.full(self._n_params, 1)
-        self._upper_bounds = np.full(self._n_params, +np.inf)
-        self._lower_bounds = np.full(self._n_params, -np.inf)
+        self._p0 = self._default_p0()
+        self._upper_bounds = self._default_upper_bounds()
+        self._lower_bounds = self._default_lower_bounds()
         self._bounds = self._lower_bounds, self._upper_bounds
-        self._is_bound = np.full(self._n_params, False)
+        self._is_bound = self._default_is_bound()
         self._init_include_list(include, exclude)
         self._confidence_level = confidence_level
 
@@ -328,6 +328,18 @@ class CurveFit(GraphableAnalysis, ABC):
             delta = np.sqrt(c + mse) * t
 
         return y - delta, y + delta
+
+    def _default_p0(self) -> NDArray:
+        return np.ones(self._n_params)
+
+    def _default_upper_bounds(self) -> NDArray:
+        return np.full(self._n_params, +np.inf)
+
+    def _default_lower_bounds(self) -> NDArray:
+        return np.full(self._n_params, -np.inf)
+
+    def _default_is_bound(self) -> NDArray:
+        return np.full(self._n_params, False)
 
     def _get_param_index(self, name: str) -> int:
         try:
