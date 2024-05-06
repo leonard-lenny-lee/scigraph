@@ -8,20 +8,23 @@ from typing import TYPE_CHECKING, NamedTuple, Optional, Callable, Literal, overr
 import warnings
 
 import numpy as np
-from numpy.typing import NDArray
 from pandas import DataFrame, Index, MultiIndex
 from scipy.optimize import minimize, NonlinearConstraint
 
-from scigraph.analyses.abc import Analysis
+from scigraph.analyses.abc import GraphableAnalysis
 from scigraph._log import LOG
 from scigraph._options import ConstraintType
 
 if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+    from numpy.typing import NDArray, ArrayLike
+
     from scigraph.analyses.curvefit import CurveFit
     from scigraph.datatables import XYTable
+    from scigraph.graphs import XYGraph
 
 
-class GlobalCurveFit(Analysis):
+class GlobalCurveFit(GraphableAnalysis):
 
     def __init__(
         self,
@@ -241,7 +244,65 @@ class GlobalCurveFit(Analysis):
         index = MultiIndex.from_product((["Lower" , "Upper"],
                                          self._model._params()))
 
-        return DataFrame(ci, index, Index(columns)) 
+        return DataFrame(ci, index, Index(columns))
+
+    def predict(self, x: NDArray | ArrayLike, dataset: str) -> NDArray:
+        popt = self._extract_popt(dataset)
+        x = np.array(x)
+        return self._model._f(x, *popt)
+
+    def interpolate(
+        self,
+        y: NDArray | ArrayLike | float,
+        dataset: str,
+        n_steps: int = 1000,
+        log_step: bool = False,
+        xlims: Optional[tuple[float, float]] = None,
+        **kwargs
+    ) -> NDArray:
+        popt = self._extract_popt(dataset)
+        return self._model.interpolate(y, dataset, n_steps, log_step, xlims,
+                                       _popt=popt, **kwargs)
+
+    @override
+    def draw(
+        self,
+        graph: XYGraph,
+        ax: Axes,
+        x_min: int | None = None,
+        x_max: int | None = None,
+        n_points: int = 1000,
+        *args,
+        **kwargs,
+    ) -> None:
+        # Determine x limits
+        x = self.table.x_values.flatten()
+        if graph.xaxis.scale == "log10":
+            x = x[np.nonzero(x)]
+        if x_min is None:
+            x_min = x.min()
+        if x_max is None:
+            x_max = x.max()
+
+        match graph.xaxis.scale:
+            case "linear":
+                xlim = x_min, x_max
+                x = np.linspace(*xlim, n_points)  # type: ignore
+            case "log10":
+                xlim = np.log10(x_min), np.log10(x_max)  # type: ignore
+                x = np.logspace(*xlim, n_points)
+            case _:
+                raise NotImplementedError
+
+        for id in self._model._include:
+            props = graph.plot_properties[id]
+            plot_kws = props.line_kws()
+            plot_kws.update(**kwargs)
+
+            popt = self._extract_popt(id)
+            y = self._model._f(x, *popt)
+            line, = ax.plot(x, y, **plot_kws)
+            graph._add_legend_artist(id, line)
 
     def _compile_xy(self) -> tuple[NDArray, ...]:
         """Return the x and y arrays to pass onto the cost function.
@@ -326,6 +387,13 @@ class GlobalCurveFit(Analysis):
                 bounds.append([lower, upper])
 
         return bounds
+
+    def _extract_popt(self, dataset: str) -> NDArray:
+        i = self._model._get_include_index(dataset)
+        start = i * self._model._n_params
+        end = start + self._model._n_params
+        popt = self.result.popt[start:end]
+        return popt
 
     @property
     def _n_params(self) -> int:

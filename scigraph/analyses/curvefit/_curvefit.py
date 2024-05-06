@@ -162,9 +162,10 @@ class CurveFit(GraphableAnalysis, ABC):
         self._result = result
         return self._result
 
-    def predict(self, x: NDArray, dataset: str) -> NDArray:
+    def predict(self, x: NDArray | ArrayLike, dataset: str) -> NDArray:
         self._access_check(dataset)
         popt = self._result[dataset].popt
+        x = np.array(x)
         return self._f(x, *popt)
 
     def interpolate(
@@ -176,8 +177,13 @@ class CurveFit(GraphableAnalysis, ABC):
         xlims: Optional[tuple[float, float]] = None,
         **kwargs
     ) -> NDArray:
-        self._access_check(dataset)
-        popt = self._result[dataset].popt
+        if "_popt" in kwargs:
+            # Allow spoofing of arbitrary popt values, allows GlobalCurveFit to
+            # utilize this method, avoiding code duplication.
+            popt = kwargs.pop("_popt")
+        else:
+            self._access_check(dataset)
+            popt = self._result[dataset].popt
 
         if isinstance(y, float | int):
             y = [y]
@@ -357,6 +363,15 @@ class CurveFit(GraphableAnalysis, ABC):
             raise ValueError(
                 f"{name} is not a valid dataset name. Valid options: "
                 f"{", ".join(self._table.dataset_ids)}"
+            ) from e
+
+    def _get_include_index(self, name: str) -> int:
+        try:
+            return self._include.index(name)
+        except ValueError as e:
+            raise ValueError(
+                f"{name} is not a valid dataset name. Valid options: "
+                f"{", ".join(self._include)}"
             ) from e
 
     @staticmethod
