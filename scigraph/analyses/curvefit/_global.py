@@ -2,8 +2,10 @@ from __future__ import annotations
 
 __all__ = ["GlobalCurveFit"]
 
-import itertools
+import itertools as it
+import multiprocessing as mp
 from typing import TYPE_CHECKING, NamedTuple, Optional, Callable, Literal, override
+import warnings
 
 import numpy as np
 from numpy.typing import NDArray
@@ -149,8 +151,9 @@ class GlobalCurveFit(Analysis):
         obj = self._compile_cost_fn()
         constraints = self._compile_constraints()
 
-        result = minimize(obj, self._p0, args=xy, bounds=self._bounds,
-                          constraints=constraints, method="SLSQP")
+        with warnings.catch_warnings(action="ignore", category=RuntimeWarning):
+            result = minimize(obj, self._p0, args=xy, bounds=self._bounds,
+                              constraints=constraints, method="SLSQP")
 
         if not result.success:
             LOG.warn("Global curve fit failed.")
@@ -169,6 +172,7 @@ class GlobalCurveFit(Analysis):
         r2 = 1 - (rss / tss)
         sy_x = (rss / dof) ** 0.5
         self._result = GlobalCurveFitResult(result.x, dof, r2, rss, sy_x)
+        self._scipy_result = result
         
         return self._result
 
@@ -178,34 +182,32 @@ class GlobalCurveFit(Analysis):
         n_samples: int = 1000,
         sampling_ratio: float = 1.0,
     ) -> DataFrame:
+        """Estimate confidence intervals with the bootstrapping method.
+
+        Use bootstraping to estimate the confidence intervals of the
+        minimization. May be computationally expensive, but probably the best
+        way to estimate confidence intervals.
+
+        Args:
+            confidence_level: The confidence level of the intervals.
+            n_samples: How many samples for bootstrapping.
+            sampling_ratio: The proportion of points for each sample to take.
+
+        Returns:
+            A summary dataframe of the confidence intervals obtained.
+        """
         xy = self._compile_xy()
-        obj = self._compile_cost_fn()
-        constraints = self._compile_constraints()
-        parameters = np.full((n_samples, self._n_params), np.nan)
-        n_failures = 0
+        fn = _BootstrapSample(self, sampling_ratio, xy)
+        parameters = []
+        chunksize = round(n_samples / mp.cpu_count())
 
-        for i in range(n_samples):
+        with mp.Pool() as p:
+            for fvar in p.imap_unordered(fn, range(n_samples),
+                                         chunksize=chunksize):
+                parameters.append(fvar)
 
-            bootstrap_data = []
-
-            for x, y in itertools.batched(xy, 2):
-                size = round(len(x) * sampling_ratio)
-                idx = np.random.choice(len(x), size=size, replace=True)
-                x, y = x[idx], y[idx]
-                bootstrap_data.append(x)
-                bootstrap_data.append(y)
-
-            bootstrap_data = tuple(bootstrap_data)
-
-            result = minimize(obj, self._p0, args=bootstrap_data,
-                              bounds=self._bounds, constraints=constraints,
-                              method="SLSQP")
-            
-            if not result.success:
-                n_failures += 1
-                continue
-
-            parameters[i] = result.x
+        parameters = np.vstack(parameters)
+        n_failures = np.isnan(parameters[:, 0]).sum()
 
         if n_failures:
             failure_rate = n_failures / n_samples
@@ -216,6 +218,13 @@ class GlobalCurveFit(Analysis):
         cl_lower = 1 - cl_upper
         ci = np.nanquantile(parameters, [cl_lower, cl_upper],
                                               axis=0)
+
+        for (ds, p_name), p, (l, u) in zip(
+            it.product(self._model._include, self._model._params()),
+            self.result.popt, ci.T
+        ):
+            uncertainty = ((u - p) + (p - l)) / 2
+            LOG.info(f"{ds} {p_name} = {p:.4g} ± {uncertainty:.4g}")
 
         # Reshape and reformat into DataFrame
         ci = ci.flatten('F').reshape(self._model._n_included,
@@ -329,3 +338,43 @@ class GlobalCurveFitResult(NamedTuple):
     r2: float
     rss: float
     sy_x: float
+
+
+class _BootstrapSample:
+    """Callable for a single bootstrap sample. Wrapped like this to enable the
+    GlobalCurveFit object to be shared between processes.
+    """
+
+    def __init__(self, cf: GlobalCurveFit, sampling_ratio: float,
+                 xy: tuple[NDArray, ...]) -> None:
+        self.cf = cf
+        self.xy = xy
+        self.sampling_ratio = sampling_ratio
+
+    def __call__(self, *_) -> NDArray:
+        # Not picklable so have to create in each call
+        obj = self.cf._compile_cost_fn()
+        constr = self.cf._compile_constraints()
+
+        bootstrap_data = []
+
+        for x, y in it.batched(self.xy, 2):
+            size = round(len(x) * self.sampling_ratio)
+            idx = np.random.choice(len(x), size=size, replace=True)
+            x, y = x[idx], y[idx]
+            bootstrap_data.append(x)
+            bootstrap_data.append(y)
+
+        bootstrap_data = tuple(bootstrap_data)
+
+        with warnings.catch_warnings(action="ignore", category=RuntimeWarning):
+            result = minimize(obj, self.cf._p0, args=bootstrap_data,
+                              bounds=self.cf._bounds, constraints=constr,
+                              method="SLSQP")
+        
+        if not result.success:
+            r = np.full(self.cf._n_params, np.nan)
+        else:
+            r = result.x
+
+        return r
