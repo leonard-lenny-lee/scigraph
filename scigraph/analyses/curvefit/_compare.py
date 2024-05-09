@@ -1,25 +1,14 @@
 from __future__ import annotations
 
-from scigraph.analyses.abc import Analysis
-from scigraph.analyses.curvefit import CurveFit, GlobalCurveFit
+from abc import abstractmethod
+from typing import override
 
-type Model = CurveFit | GlobalCurveFit
+from scigraph.analyses.abc import Analysis
+from scigraph.analyses.curvefit import CurveFit
 
 
 class ModelComparison(Analysis):
 
-    def __init__(self, *models: Model) -> None:
-        if not models:
-            raise ValueError()
-
-        for model in models:
-            model.fit()
-            model.table
-        self._models = [_ModelAdapter(model) for model in models]
-
-
-class _ModelAdapter:
-
-    def __init__(self, model: Model) -> None:
-        model.analyze()
-        self._model = model
+    def __init__(self, model_one: CurveFit, model_two: CurveFit) -> None:
+        self._model_one = model_one
+        self._model_two = model_two

@@ -3,7 +3,10 @@ from typing import Self
 
 
 class Option(Enum):
-    """Options which are parsed from user provided string literal arguments."""
+    """Options which are parsed from user provided string literal arguments.
+    All literal arguments in public APIs should be wrapped in an Option, to
+    perform automatic checking. Use static analyzer for private interfaces.
+    """
 
     def to_str(self, ws_char: str = '_') -> str:
         return self.name.replace("_", ws_char).lower()
@@ -124,14 +127,19 @@ class WilcoxonZeroMethod(Option):
     PRATT           = auto()
 
 
-class ConstraintType(Option):
+class CFBoundType(Option):
     EQUAL           = auto()
     GREATER         = auto()
     LESS            = auto()
 
 
-class CurveFitBands(Option):
+class CFBandType(Option):
     CONFIDENCE      = auto()
     PREDICTION      = auto()
+
+
+class CFReplicatePolicy(Option):
+    INDIVIDUAL      = auto()
+    MEAN            = auto()
 
 # fmt: on
