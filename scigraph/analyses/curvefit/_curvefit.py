@@ -12,8 +12,8 @@ from typing import Literal, Optional, override, TYPE_CHECKING
 import warnings
 
 from matplotlib.axes import Axes
+import numdifftools as ndt
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
 from pandas import DataFrame, Index, MultiIndex
 from scipy.optimize import NonlinearConstraint, curve_fit, minimize, root_scalar
 import scipy.stats
@@ -24,6 +24,8 @@ from scigraph._options import CFBoundType, CFBandType, CFReplicatePolicy
 from scigraph.config import SG_DEFAULTS
 
 if TYPE_CHECKING:
+    from numpy.typing import ArrayLike, NDArray
+
     from scigraph.datatables import XYTable
     from scigraph.graphs import XYGraph
 
@@ -39,6 +41,24 @@ class CurveFit(GraphableAnalysis, ABC):
         replicate_policy: Literal["individual", "mean"] = "individual",
         confidence_level: float = 0.95,
     ) -> None:
+        """Initialize a curve fitting instance.
+
+        Curve fit uses least squares optimization to fit X and Y values to a
+        scalar model.
+
+        Args:
+            table: XYTable that contains the data to be fit.
+            include: A list of datasets to include in the analysis. If None,
+                *all* datasets are included.
+            exclude: A list of datasets to exclude from the analysis. If None,
+                no datasets are excluded. Both include and exclude lists cannot
+                be specified.
+            replicate_policy: If "individual", each replicate Y value is
+                considered an individual point. If "mean", the mean value of
+                replicates is considered. "mean" is not recommended.
+            confidence_level: The confidence level all confidence interval
+                calculations and analysis is conducted at.
+        """
         self._table = table
         self._init_include_list(include, exclude)
         self._n_params = len(self._params())
@@ -52,7 +72,6 @@ class CurveFit(GraphableAnalysis, ABC):
         self._bounds = self._lower_bounds, self._upper_bounds
         self._is_bound = self._default_is_bound()
         self._is_constrained = np.full(self._n_params, False)
-
         self._fitted = False
 
     @staticmethod
@@ -107,20 +126,20 @@ class CurveFit(GraphableAnalysis, ABC):
             param: The name of the parameter to constrain.
         """
         # Check if parameter is also bound to a particular value
-        i = self._get_param_index(param)
-        idxs = list(range(i, self._total_n_params, self._n_params))
+        idxs = self._get_param_indices(param)
+        param_is_bound = np.any(self._is_bound[idxs])
 
-        if np.any(self._is_bound[idxs]):
+        if param_is_bound:
             # Impose this restriction for now as it makes dof calculations more
             # difficult
             LOG.warn(
-                "Equality constraint has been ignored as it is already "
-                "bounded. A value cannot be bound and constrained "
+                "Equality constraint has been ignored as it is already bounded "
+                "to a value. A parameter cannot be bound and constrained "
                 "simultaneously."
             )
             return
 
-        self._is_constrained[i] = True
+        self._is_constrained[idxs[0]] = True
 
     def add_bound(
         self,
@@ -131,27 +150,39 @@ class CurveFit(GraphableAnalysis, ABC):
         *,
         epsilon: float = 1e-8,
     ) -> None:
-        i = self._get_param_index(param)
+        """Impose bounds to a parameter.
+
+        Limit the optimization search space for a parameter.
+
+        Args:
+            param: The parameter to apply the bound to.
+            ty: The type of bound to apply. For "equal" bounds, you are binding
+                the parameter is a specific value.
+            value: The value that the bound takes.
+            dataset: The dataset to apply the bound to. If None, the bound is
+                applied to all datasets.
+            epsilon: SciPy does not allow zero-sized bounds, so epsilon
+                represents the relative size of the bound for equality bounds.
+                Ignored if ty is "greater" or "less".
+        """
+        idxs = self._get_param_indices(param)
         constraint_t = CFBoundType.from_str(ty)
 
-        if dataset is None:  # Apply bound to *all* datasets
-            idxs = list(range(i, self._total_n_params, self._n_params))
-        else:
-            ds_idx = self._get_include_index(dataset)
-            idxs = [i + ds_idx * self._n_params]
+        if dataset is not None:  # Restrict bound to one dataset
+            idxs = [idxs[self._get_include_index(dataset)]]
 
-        if constraint_t is CFBoundType.EQUAL and np.any(self._is_constrained[i]):
-            # Impose this restriction for now as it makes dof calculations more
-            # difficult
+        if constraint_t is CFBoundType.EQUAL and self._is_constrained[idxs[0]]:
+            # Impose this restriction it makes dof calculations easier
             LOG.warn(
                 "Equality bound has been ignored as it is already "
-                "constrained. A value cannot be bound and constrained "
+                "constrained. A parameter cannot be bound and constrained "
                 "simulataneously."
             )
             return
 
         match constraint_t:
             case CFBoundType.EQUAL:
+                # Curve fit does not allow zero-sized bounds, so use epsilon
                 err = abs(value) * epsilon / 2
                 self._upper_bounds[idxs] = value + err
                 self._lower_bounds[idxs] = value - err
@@ -159,17 +190,28 @@ class CurveFit(GraphableAnalysis, ABC):
                 self._is_bound[idxs] = True
             case CFBoundType.GREATER:
                 self._lower_bounds[idxs] = value
-                if self._p0[idxs] < value:
-                    self._p0[idxs] = value
+                self._p0[idxs] = np.maximum(self._p0[idxs], value)
             case CFBoundType.LESS:
                 self._upper_bounds[idxs] = value
-                if self._p0[idxs] > value:
-                    self._p0[idxs] = value
+                self._p0[idxs] = np.minimum(self._p0[idxs], value)
 
     def add_initial_value(
         self, param: str, val: float, dataset: Optional[str] = None
     ) -> None:
-        i = self._get_include_index(param)
+        """Add initial guess for the optimization problem.
+
+        Initial guesses are initialized to a default value, usually 1. For more
+        complex models, especially those with constraints and bounds,
+        optimization may have trouble converging or can be stuck in local
+        minima. In these cases, adding initial values can help curve fitting.
+
+        Args:
+            param: The parameter to add an initial value to.
+            val: The value of the initial guess.
+            dataset: The dataset to apply the initial value to. If None,
+                initial value is applied to all datasets.
+        """
+        i = self._get_param_index(param)
 
         if dataset is None:  # Apply to all
             idxs = list(range(i, self._total_n_params, self._n_params))
@@ -180,10 +222,22 @@ class CurveFit(GraphableAnalysis, ABC):
         self._p0[idxs] = val
 
     def fit(self) -> dict[str, CurveFitResult | None]:
-        use_global_fit = np.any(self._is_constrained)
+        """Execute SciPy's curve fitting algorithms.
+
+        Compiles parameters and executes least-squares optimization to obtain
+        parameters to fit the model using SciPy functions. Wraps
+        scipy.optimize.curve_fit for non-constrained problems and wraps
+        scipy.optimize.minimize using SLSQP for constrained problems, where
+        parameters are shared between datasets ("global" curve fitting),
+        using the residual sum of squares as the cost function.
+
+        Returns:
+            A dictionary of the optimization results, with each entry
+            representing the results of each dataset.
+        """
         xy = self._prepare_xy()
 
-        if use_global_fit:
+        if self._global_fit:
             res = self._gfit(xy)
         else:
             res = self._fit(xy)
@@ -193,6 +247,14 @@ class CurveFit(GraphableAnalysis, ABC):
         return res
 
     def approximate_CI(self) -> DataFrame:
+        """Approximate the confidence intervals from covariance matrix.
+
+        Uses the diagonals of the covariance matrix approximation obtained from
+        the SciPy curve fitting protocol.
+
+        Returns:
+            The estimated confidence intervals wrapped in a DataFrame.
+        """
         self._check_fitted()
         n_datasets = len(self._result)
         lower_ci = np.full((n_datasets, self._n_params), np.nan)
@@ -265,9 +327,8 @@ class CurveFit(GraphableAnalysis, ABC):
         )
         ci = ci[idx]
         columns = self.table.dataset_ids.copy()
-        used_global = np.any(self._is_constrained)
 
-        if used_global:
+        if self._global_fit:
             shared = ci.T[0].copy()
             shared[np.tile(~self._is_constrained, 3)] = np.nan
             ci = np.hstack((ci, np.atleast_2d(shared).T))
@@ -276,6 +337,7 @@ class CurveFit(GraphableAnalysis, ABC):
         else:
             col_idx = list(range(0, self._total_n_params, self._n_params))
             n_failures = np.isnan(parameters[:, col_idx]).sum()
+            n_samples *= self._n_included
 
         if n_failures:
             failure_rate = n_failures / n_samples
@@ -289,6 +351,18 @@ class CurveFit(GraphableAnalysis, ABC):
         return DataFrame(ci, index, Index(columns))
 
     def predict(self, x: NDArray | ArrayLike, dataset: str) -> NDArray:
+        """Compute Y for a given set of X values.
+
+        Compute Y over a set of X values by evaluating the function which
+        defines the curve, using the best fit parameters of a dataset.
+
+        Args:
+            x: The values of X to evaluate for.
+            dataset: The dataset to use the best fit parameters from.
+
+        Returns:
+            An array of Y values with the same shape as the input array X.
+        """
         popt = self._get_res(dataset).popt
         x = np.array(x)
         return self._f(x, *popt)
@@ -302,6 +376,27 @@ class CurveFit(GraphableAnalysis, ABC):
         xlims: Optional[tuple[float, float]] = None,
         **kwargs,
     ) -> NDArray:
+        """Compute corresponding X values from a set of Y values.
+
+        Numerically finds the corresponding X values from Y values. Since
+        there may be more than one corresponding X value, the algorithm will
+        search within the range of X values in the XYTable first, from left
+        to right, and return the first valid solution. If none is found, the
+        search space will be doubled. If none is still found, a NaN value will.
+        returned.
+
+        Args:
+            y: The set of Y values to compute X for.
+            dataset: The dataset to use the best fit parameters from.
+            n_steps: The number of search steps to take, where the size of the
+                step is (X_max - X_min) / n_steps.
+            log_step: If True, the steps will be taken in a log-wise fashion.
+            xlims: Override the limits of the search. If None, limits are set
+                to X_min, X_max.
+
+        Returns:
+            An array of X values with the same shape as input array Y.
+        """
         popt = self._get_res(dataset).popt
 
         if isinstance(y, float | int):
@@ -369,6 +464,24 @@ class CurveFit(GraphableAnalysis, ABC):
         *args,
         **kwargs,
     ) -> None:
+        """Draw the curve onto an XYGraph.
+
+        Draws the best-fit curve onto matplotlib.Axes, using the configuration
+        from an XYGraph.
+
+        Args:
+            graph: The XYGraph, which is bound to the same XYTable.
+            ax: The mpl Axes object to draw onto.
+            x_min: The minimum X value to draw curves for.
+            x_max: The maximum X value to draw curves for.
+            n_points: The number of points which defines the curve.
+            bands: Plot confidence or prediction bands according to the
+                confidence level defined in the initializer.
+            line_kws: Any keyword arguments to pass onto ax.plot which is used
+                to draw the curve
+            band_kws: Any keyword arguments to pass onto ax.fill_between which
+                is used to draw the confidence / prediction bands.
+        """
         if line_kws is None:
             line_kws = {}
         if band_kws is None:
@@ -445,6 +558,7 @@ class CurveFit(GraphableAnalysis, ABC):
             not_nan = ~np.isnan(y_)
             x_, y_ = x_[not_nan], y_[not_nan]
             if subsample:
+                # Subsample with replacement for bootstrap estimation
                 idx = np.random.choice(len(x_), size=len(x_), replace=True)
                 x_, y_ = x_[idx], y_[idx]
             out.append(x_)
@@ -462,7 +576,7 @@ class CurveFit(GraphableAnalysis, ABC):
             bounds = self._lower_bounds[s], self._upper_bounds[s]
 
             try:
-                with warnings.catch_warnings(action="ignore", category=RuntimeWarning):
+                with warnings.catch_warnings(action="ignore"):
                     popt, pcov = curve_fit(
                         self._f, x, y, p0=p0, bounds=bounds, nan_policy="omit"
                     )
@@ -505,6 +619,7 @@ class CurveFit(GraphableAnalysis, ABC):
             LOG.warn(f"SciPy minimzation error: {r.message}")
 
         popts = r.x.reshape(self._n_included, self._n_params)
+        self._gres = r
         res = {}
 
         for popt, id, (x, y) in zip(popts, self._include, it.batched(xy, 2)):
@@ -512,6 +627,7 @@ class CurveFit(GraphableAnalysis, ABC):
             rss = ((y - self._f(x, *popt))).sum()
             tss = ((y - y.mean()) ** 2).sum()
             r2 = 1 - (rss / tss)
+
             res[id] = CurveFitResult(
                 popt=popt,
                 pcov=None,
@@ -529,6 +645,7 @@ class CurveFit(GraphableAnalysis, ABC):
 
         popt = popts[0].copy()
         popt[~self._is_constrained] = np.nan
+
         # Assertion must pass for dof calculation to be valid
         assert all(~(np.tile(self._is_constrained, self._n_included) & self._is_bound))
         dof = (
@@ -539,8 +656,9 @@ class CurveFit(GraphableAnalysis, ABC):
         tss = ((y - y.mean()) ** 2).sum()
         r2 = 1 - (rss / tss)
         sy_x = (rss / dof) ** 0.5
+
         res["Global (Shared)"] = CurveFitResult(
-            popt,
+            popt=popt,
             pcov=None,
             dof=dof,
             r2=r2,
@@ -638,12 +756,15 @@ class CurveFit(GraphableAnalysis, ABC):
         return np.ones(self._total_n_params)
 
     def _default_upper_bounds(self) -> NDArray:
+        """Override in child classes if there is a logical bound."""
         return np.full(self._total_n_params, +np.inf)
 
     def _default_lower_bounds(self) -> NDArray:
+        """Override in child classes if there is a logical bound."""
         return np.full(self._total_n_params, -np.inf)
 
     def _default_is_bound(self) -> NDArray:
+        """Override in child classes if there is a logical bound."""
         return np.full(self._total_n_params, False)
 
     def _get_param_index(self, name: str) -> int:
@@ -654,6 +775,10 @@ class CurveFit(GraphableAnalysis, ABC):
                 f"{name} is not a valid parameter. Valid options: "
                 f"{", ".join(self._params())}"
             ) from e
+
+    def _get_param_indices(self, name: str) -> list[int]:
+        idx = self._get_param_index(name)
+        return list(range(idx, self._total_n_params, self._n_params))
 
     def _get_dataset_index(self, name: str) -> int:
         try:
@@ -679,6 +804,10 @@ class CurveFit(GraphableAnalysis, ABC):
     @property
     def _total_n_params(self) -> int:
         return self._n_params * self._n_included
+
+    @property
+    def _global_fit(self) -> bool:
+        return np.any(self._is_constrained)  # type: ignore
 
     def _init_include_list(
         self,
@@ -741,11 +870,11 @@ class _BootstrapSample:
 
     def __call__(self, *_) -> NDArray:
         logging.disable(logging.CRITICAL)
+
         xy = self.cf._prepare_xy(subsample=True)
-        use_global_fit = np.any(self.cf._is_constrained)
         out = np.full((self.cf._n_included, self.cf._n_params), np.nan)
 
-        if use_global_fit:
+        if self.cf._global_fit:
             res = self.cf._gfit(xy)
         else:
             res = self.cf._fit(xy)
