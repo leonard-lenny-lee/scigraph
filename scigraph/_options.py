@@ -8,7 +8,7 @@ class Option(Enum):
     perform automatic checking. Use static analyzer for private interfaces.
     """
 
-    def to_str(self, ws_char: str = '_') -> str:
+    def to_str(self, ws_char: str = "_") -> str:
         return self.name.replace("_", ws_char).lower()
 
     @classmethod
@@ -16,17 +16,14 @@ class Option(Enum):
         if isinstance(s, cls):
             return s
         if not isinstance(s, str):
-            raise TypeError(
-                f"{cls.__name__.lower()} argument must be a string."
-            )
-        key = s.upper().strip().replace(' ', '_')
+            raise TypeError(f"{cls.__name__.lower()} argument must be a string.")
+        key = s.upper().strip().replace(" ", "_")
         if key in cls.__members__:
             return cls[key]
         else:
             opts = [m.lower() for m in cls.__members__.keys()]
             raise ValueError(
-                f"Invalid {cls.__name__.lower()} argument: '{s}'. "
-                f"Options: {opts}"
+                f"Invalid {cls.__name__.lower()} argument: '{s}'. " f"Options: {opts}"
             )
 
     @classmethod
@@ -141,5 +138,10 @@ class CFBandType(Option):
 class CFReplicatePolicy(Option):
     INDIVIDUAL      = auto()
     MEAN            = auto()
+
+
+class CFComparisonMethod(Option):
+    AIC             = auto()
+    F               = auto()
 
 # fmt: on

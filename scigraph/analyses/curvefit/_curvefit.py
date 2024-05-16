@@ -4,6 +4,7 @@ __all__ = ["CurveFit"]
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from functools import cached_property
 import inspect
 import itertools as it
 import logging
@@ -12,25 +13,36 @@ from typing import Literal, Optional, override, TYPE_CHECKING
 import warnings
 
 from matplotlib.axes import Axes
-import numdifftools as ndt
 import numpy as np
 from pandas import DataFrame, Index, MultiIndex
 from scipy.optimize import NonlinearConstraint, curve_fit, minimize, root_scalar
 import scipy.stats
 
 from scigraph.analyses.abc import GraphableAnalysis
-from scigraph._log import LOG
-from scigraph._options import CFBoundType, CFBandType, CFReplicatePolicy
+from scigraph.analyses.curvefit._compare import ExtraSumOfSquaresFTest, AICComparison
 from scigraph.config import SG_DEFAULTS
+from scigraph._log import LOG
+from scigraph._options import (
+    CFBoundType,
+    CFBandType,
+    CFReplicatePolicy,
+    CFComparisonMethod,
+)
 
 if TYPE_CHECKING:
     from numpy.typing import ArrayLike, NDArray
 
+    from scigraph.analyses.curvefit._compare import (
+        ExtraSumOfSquaresFTestResult,
+        AICComparisonResult,
+    )
     from scigraph.datatables import XYTable
     from scigraph.graphs import XYGraph
 
 
 class CurveFit(GraphableAnalysis, ABC):
+
+    _GLOBAL_NAME = "Global (Shared)"
 
     def __init__(
         self,
@@ -61,7 +73,7 @@ class CurveFit(GraphableAnalysis, ABC):
         """
         self._table = table
         self._init_include_list(include, exclude)
-        self._n_params = len(self._params())
+        self._n_params = len(self._params)
         self._replicate_policy = CFReplicatePolicy.from_str(replicate_policy)
         self._confidence_level = confidence_level
 
@@ -72,6 +84,7 @@ class CurveFit(GraphableAnalysis, ABC):
         self._bounds = self._lower_bounds, self._upper_bounds
         self._is_bound = self._default_is_bound()
         self._is_constrained = np.full(self._n_params, False)
+        self._popt = np.full(self._total_n_params, np.nan)
         self._fitted = False
 
     @staticmethod
@@ -106,7 +119,7 @@ class CurveFit(GraphableAnalysis, ABC):
 
         data = np.vstack(data)
         index = [
-            ("Best Fit Params", param) for param in self._params()
+            ("Best Fit Params", param) for param in self._params
         ]  # type: list[tuple[str, str]]
         index.extend(
             [("Goodness of Fit", stat) for stat in ["dof", "r2", "rss", "sy_x", "n"]]
@@ -219,7 +232,9 @@ class CurveFit(GraphableAnalysis, ABC):
             ds_i = self._get_dataset_index(dataset)
             idxs = [ds_i * self._n_params + i]
 
-        self._p0[idxs] = val
+        self._p0[idxs] = np.clip(
+            val, self._lower_bounds[idxs], self._upper_bounds[idxs]
+        )
 
     def fit(self) -> dict[str, CurveFitResult | None]:
         """Execute SciPy's curve fitting algorithms.
@@ -278,7 +293,7 @@ class CurveFit(GraphableAnalysis, ABC):
             f"Lower CI {self._confidence_level:.0%}",
             f"Upper CI {self._confidence_level:.0%}",
         )
-        index = MultiIndex.from_product((categories, self._params()))
+        index = MultiIndex.from_product((categories, self._params))
         return DataFrame(values.T, index, Index(self._result.keys()))
 
     def bootstrap_CI(self, n_samples: int = 1000) -> DataFrame:
@@ -310,7 +325,7 @@ class CurveFit(GraphableAnalysis, ABC):
         ci = np.nanquantile(parameters, [cl_lower, 0.5, cl_upper], axis=0)
 
         for (ds, p_name), (lower, median, upper) in zip(
-            it.product(self._include, self._params()), ci.T
+            it.product(self._include, self._params), ci.T
         ):
             uncertainty = ((upper - median) + (median - lower)) / 2
             LOG.info(
@@ -332,7 +347,7 @@ class CurveFit(GraphableAnalysis, ABC):
             shared = ci.T[0].copy()
             shared[np.tile(~self._is_constrained, 3)] = np.nan
             ci = np.hstack((ci, np.atleast_2d(shared).T))
-            columns.append("Global (Shared)")
+            columns.append(self._GLOBAL_NAME)
             n_failures = np.isnan(parameters[:, 0]).sum()
         else:
             col_idx = list(range(0, self._total_n_params, self._n_params))
@@ -346,7 +361,7 @@ class CurveFit(GraphableAnalysis, ABC):
                 f"{n_samples} ({failure_rate:.2%})"
             )
 
-        index = MultiIndex.from_product((["Lower", "Median", "Upper"], self._params()))
+        index = MultiIndex.from_product((["Lower", "Median", "Upper"], self._params))
 
         return DataFrame(ci, index, Index(columns))
 
@@ -449,6 +464,86 @@ class CurveFit(GraphableAnalysis, ABC):
         out = out.reshape(y.shape)
 
         return out
+
+    def compare_best_fit_parameters(
+        self,
+        params: str | list[str],
+        *,
+        method: Literal["aic", "f"],
+        alpha: float = 0.05,
+    ) -> ExtraSumOfSquaresFTestResult | AICComparisonResult:
+        """Does the best-fit values of selected unshared parameters differ
+        between datasets?
+
+        Compare independent fits with a global fit that shares the selected
+        parameter(s) using Akaike's Information Criterion or the extra sum-of-
+        squares F test.
+
+        Args:
+            params: The unshared parameter(s) to compare.
+            method: Comparison method, either using Akaike's Information
+                Criterion ("aic") or extra sum-of-squares F test ("f").
+            alpha: Threshold p-value to select the more complex model for the
+                F test, ignored if method is "aic".
+
+        Returns:
+            The results of the AIC or extra sum-of-squares F test analysis.
+
+        Raises:
+            ValueError: If the parameters selected are already constrained
+                or bound to a specific value.
+        """
+        if not self._fitted:
+            self.fit()
+
+        if isinstance(params, str):
+            params = [params]
+
+        errors = []
+        for param in params:
+            idxs = self._get_param_indices(param)
+            if self._is_constrained[idxs[0]] or np.any(self._is_bound[idxs]):
+                errors.append(param)
+
+        if errors:
+            raise ValueError(
+                f"{", ".join(errors)} has been bound to values for some or all "
+                "of the datasets or has been constrained to each other and, "
+                "therefore, cannot be compared."
+            )
+
+        constrained_model = self._clone(self)
+        constrained_model._p0 = self._popt.copy()
+
+        for param in params:
+            constrained_model.add_constraint(param)
+
+        constrained_model.fit()
+        comparison_method = CFComparisonMethod.from_str(method)
+
+        null = f"{", ".join(params)} same for all datasets"
+        alt = f"{", ".join(params)} different for at least one dataset"
+        LOG.info(f"Null hypothesis: {null}")
+        LOG.info(f"Alternative hypothesis: {alt}")
+
+        if comparison_method is CFComparisonMethod.F:
+            ftest = ExtraSumOfSquaresFTest(
+                constrained_model,
+                self,
+            )
+            ftest.analyze()
+            res = ftest._result[self._GLOBAL_NAME]
+            conclusion = "Reject" if res.p < alpha else "Accept"
+            preferred_model = alt if res.p < alpha else null
+
+            LOG.info(f"P value: {res.p:.3g}")
+            LOG.info(f"Conclusion ({alpha = :.1g}): {conclusion} null hypothesis")
+            LOG.info(f"Preferred model: {preferred_model}")
+        else:  # AIC Comparison
+            aic = AICComparison(constrained_model, self)
+            res = aic.analyze()
+
+        return res
 
     @override
     def draw(
@@ -594,6 +689,7 @@ class CurveFit(GraphableAnalysis, ABC):
             sy_x = (rss / dof) ** 0.5
 
             res[id] = CurveFitResult(popt, pcov, dof, r2, rss, sy_x, n)
+            self._popt[s] = popt
 
         return res
 
@@ -618,6 +714,7 @@ class CurveFit(GraphableAnalysis, ABC):
             LOG.warn("Global curve fit failed.")
             LOG.warn(f"SciPy minimzation error: {r.message}")
 
+        self._popt[:] = r.x
         popts = r.x.reshape(self._n_included, self._n_params)
         self._gres = r
         res = {}
@@ -657,7 +754,7 @@ class CurveFit(GraphableAnalysis, ABC):
         r2 = 1 - (rss / tss)
         sy_x = (rss / dof) ** 0.5
 
-        res["Global (Shared)"] = CurveFitResult(
+        res[self._GLOBAL_NAME] = CurveFitResult(
             popt=popt,
             pcov=None,
             dof=dof,
@@ -769,11 +866,11 @@ class CurveFit(GraphableAnalysis, ABC):
 
     def _get_param_index(self, name: str) -> int:
         try:
-            return self._params().index(name)
+            return self._params.index(name)
         except ValueError as e:
             raise ValueError(
                 f"{name} is not a valid parameter. Valid options: "
-                f"{", ".join(self._params())}"
+                f"{", ".join(self._params)}"
             ) from e
 
     def _get_param_indices(self, name: str) -> list[int]:
@@ -798,6 +895,7 @@ class CurveFit(GraphableAnalysis, ABC):
                 f"{", ".join(self._include)}"
             ) from e
 
+    @cached_property
     def _params(self) -> tuple[str, ...]:
         return tuple(inspect.signature(self._f).parameters.keys())[1:]
 
@@ -847,6 +945,18 @@ class CurveFit(GraphableAnalysis, ABC):
         if res is None:
             raise ValueError(f"Curve fit failed for {dataset}.")
         return res
+
+    @classmethod
+    def _clone(cls, x: CurveFit) -> CurveFit:
+        """Use custom copy method to selectively deepcopy some attributes."""
+        out = cls(x.table, x._include, confidence_level=x._confidence_level)
+        out._p0 = x._p0.copy()
+        out._lower_bounds = x._lower_bounds.copy()
+        out._upper_bounds = x._upper_bounds.copy()
+        out._is_bound = x._is_bound.copy()
+        out._is_constrained = x._is_constrained.copy()
+        out._replicate_policy = x._replicate_policy
+        return out
 
 
 @dataclass(frozen=True, slots=True)
