@@ -523,8 +523,6 @@ class CurveFit(GraphableAnalysis, ABC):
 
         null = f"{", ".join(params)} same for all datasets"
         alt = f"{", ".join(params)} different for at least one dataset"
-        LOG.info(f"Null hypothesis: {null}")
-        LOG.info(f"Alternative hypothesis: {alt}")
 
         if comparison_method is CFComparisonMethod.F:
             ftest = ExtraSumOfSquaresFTest(
@@ -535,13 +533,34 @@ class CurveFit(GraphableAnalysis, ABC):
             res = ftest._result[self._GLOBAL_NAME]
             conclusion = "Reject" if res.p < alpha else "Accept"
             preferred_model = alt if res.p < alpha else null
+            spacing = 23
 
-            LOG.info(f"P value: {res.p:.3g}")
-            LOG.info(f"Conclusion ({alpha = :.1g}): {conclusion} null hypothesis")
-            LOG.info(f"Preferred model: {preferred_model}")
+            LOG.info(
+                "Comparison of fits\n"
+                f"{"Null hypothesis":<{spacing}} {null}\n"
+                f"{"Alternative hypothesis":<{spacing}} {alt}\n"
+                f"{"P value":<{spacing}} {res.p:.3g}\n"
+                f"{"Alpha":<{spacing}} {alpha:.1g}\n"
+                f"{"Conclusion":<{spacing}} {conclusion} null hypothesis\n"
+                f"{"Preferred model":<{spacing}} {preferred_model}"
+            )
         else:  # AIC Comparison
             aic = AICComparison(constrained_model, self)
-            res = aic.analyze()
+            aic.analyze()
+            res = aic._result[self._GLOBAL_NAME]
+            preferred_model = alt if res.p2 > res.p1 else null
+            spacing = 27
+
+            LOG.info(
+                "Comparison of fits\n"
+                f"{"Simpler model":<{spacing}} {null}\n"
+                f"{"Simple model probability":<{spacing}} {res.p1:.2%}\n"
+                f"{"Complex model":<{spacing}} {alt}\n"
+                f"{"Complex model probability":<{spacing}} {res.p2:.2%}\n"
+                f"{"Ratio of probabilities":<{spacing}} {res.p_ratio:.3g}\n"
+                f"{"Preferred model":<{spacing}} {preferred_model}\n"
+                f"{"Difference in AICc":<{spacing}} {res.delta_aicc:.3g}"
+            )
 
         return res
 
