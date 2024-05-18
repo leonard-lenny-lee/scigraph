@@ -5,6 +5,7 @@ __all__ = ["Constant", "Linear", "Polynomial", "ExponentialDecay",
            "Gaussian", "Lorentzian", "Sinusoid", "Logistic3Parameter",
            "Logistic4Parameter", "Logistic5Parameter"]
 
+from functools import cached_property
 from typing import override, TYPE_CHECKING
 
 import numpy as np
@@ -44,16 +45,13 @@ class Polynomial(CurveFit):
         confidence_level: float = 0.95,
     ) -> None:
         self._order = order
-        super().__init__(table, include, exclude, confidence_level)
+        super().__init__(table, include, exclude, confidence_level=confidence_level)
+        self._n_params = order + 1
 
+    @cached_property
     @override
     def _params(self) -> tuple[str, ...]:
         return tuple([f"a{n}" for n in range(self._order + 1)])
-
-    @property
-    @override
-    def _n_params(self) -> int:
-        return self._order + 1
 
     @override
     @staticmethod

@@ -1,16 +1,19 @@
 from __future__ import annotations
 
-__all__ = ["ExtraSumOfSquaresFTest"]
+__all__ = ["compare_models"]
 
+from abc import abstractmethod
 from dataclasses import dataclass
-from typing import override, TYPE_CHECKING
+from typing import Literal, override, TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
+from prettytable import PrettyTable
 import scipy.stats
 
 from scigraph.analyses.abc import Analysis
 from scigraph._log import LOG
+from scigraph._options import CFComparisonMethod
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -19,12 +22,50 @@ if TYPE_CHECKING:
     from scigraph.datatables import XYTable
 
 
+def compare_models(
+    model_one: CurveFit,
+    model_two: CurveFit,
+    method: Literal["f", "aic"],
+    alpha: float = 0.05,
+) -> dict[str, ExtraSumOfSquaresFTestResult] | dict[str, AICComparisonResult]:
+    """For each dataset, which model fits best?
+
+    Compare which model fits the data best using an extra sum-of-squares F test
+    or Akaike's Information Criterion. If the F-test is chosen, the models must
+    be nested where one model is a special case of the other. If models are not
+    nested, choose AIC comparison.
+
+    Args:
+        model_one: The first model.
+        model_two: The second model.
+        method: The method to use to compare; "f" or "aic".
+        alpha: The threshold p-value to select model two in the F-test analysis,
+            ignored for AIC comparisons
+
+    Returns:
+        The model comparisons for each dataset.
+    """
+    cmp_method = CFComparisonMethod.from_str(method)
+
+    if cmp_method is CFComparisonMethod.F:
+        cmp = ExtraSumOfSquaresFTest(model_one, model_two, alpha)
+    else:
+        cmp = AICComparison(model_one, model_two, alpha)
+
+    cmp.analyze()
+    null = model_one.__class__.__name__
+    alt = model_two.__class__.__name__
+    cmp._report(null, alt)
+    return cmp._result
+
+
 class ModelComparison(Analysis):
 
     def __init__(
         self,
         model_one: CurveFit,
         model_two: CurveFit,
+        alpha: float = 0.05,
     ) -> None:
         if not model_one.table is model_two.table:
             raise ValueError(
@@ -46,6 +87,7 @@ class ModelComparison(Analysis):
         self._models = model_one, model_two
         self._compare_by_dataset = not (model_one._global_fit or model_two._global_fit)
         self._rss, self._dof, self._n = self._calculate_rss_dof_n()
+        self._alpha = alpha
 
     @property
     @override
@@ -90,6 +132,9 @@ class ModelComparison(Analysis):
 
         return rss, dof, n
 
+    @abstractmethod
+    def _report(self, null_hyp: str, alt_hyp: str) -> None: ...
+
 
 class ExtraSumOfSquaresFTest(ModelComparison):
 
@@ -97,8 +142,9 @@ class ExtraSumOfSquaresFTest(ModelComparison):
         self,
         model_one: CurveFit,
         model_two: CurveFit,
+        alpha: float = 0.05,
     ) -> None:
-        super().__init__(model_one, model_two)
+        super().__init__(model_one, model_two, alpha)
         if not np.all(self._dof[0] > self._dof[1]):
             raise ValueError(
                 "Model two does not have fewer degrees of freedom "
@@ -136,6 +182,36 @@ class ExtraSumOfSquaresFTest(ModelComparison):
 
         return pd.DataFrame(values, pd.Index(keys)).T
 
+    @override
+    def _report(self, null_hyp: str, alt_hyp: str) -> None:
+        table = PrettyTable()
+        fields = [
+            "Null hypothesis",
+            "Alternative hypothesis",
+            "P value",
+            f"Conclusion (alpha = {self._alpha})",
+            "Preferred model",
+        ]
+        table.add_column("", fields)
+
+        for k, res in self._result.items():
+            significant = res.p < self._alpha
+            conclusion = "Reject" if significant else "Accept"
+            preferred_model = alt_hyp if significant else null_hyp
+            table.add_column(
+                k,
+                [
+                    null_hyp,
+                    alt_hyp,
+                    f"{res.p:.2g}",
+                    f"{conclusion} null hypothesis",
+                    preferred_model,
+                ],
+            )
+
+        table.align = "l"
+        LOG.info(f"Comparison of fits\n{table}")
+
 
 class AICComparison(ModelComparison):
 
@@ -159,6 +235,38 @@ class AICComparison(ModelComparison):
         self._result = dict(zip(keys, values))
 
         return pd.DataFrame(values, pd.Index(keys)).T
+
+    @override
+    def _report(self, null_hyp: str, alt_hyp: str) -> None:
+        table = PrettyTable()
+        fields = [
+            "Model 1",
+            "Model 1 probability",
+            "Model 2",
+            "Model 2 probability",
+            "Ratio of probabilities",
+            "Preferred model",
+            "Difference in AICc",
+        ]
+        table.add_column("", fields)
+
+        for k, res in self._result.items():
+            preferred_model = alt_hyp if res.p2 > res.p1 else null_hyp
+            table.add_column(
+                k,
+                [
+                    null_hyp,
+                    f"{res.p1:.2%}",
+                    alt_hyp,
+                    f"{res.p2:.2%}",
+                    f"{res.p_ratio:.3g}",
+                    preferred_model,
+                    f"{res.delta_aicc:.3g}",
+                ],
+            )
+
+        table.align = "l"
+        LOG.info(f"Comparison of fits\n{table}")
 
 
 @dataclass(slots=True)

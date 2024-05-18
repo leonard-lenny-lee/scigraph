@@ -175,7 +175,7 @@ class CurveFit(GraphableAnalysis, ABC):
             dataset: The dataset to apply the bound to. If None, the bound is
                 applied to all datasets.
             epsilon: SciPy does not allow zero-sized bounds, so epsilon
-                represents the relative size of the bound for equality bounds.
+                represents the absolute size of the bound for equality bounds.
                 Ignored if ty is "greater" or "less".
         """
         idxs = self._get_param_indices(param)
@@ -196,9 +196,8 @@ class CurveFit(GraphableAnalysis, ABC):
         match constraint_t:
             case CFBoundType.EQUAL:
                 # Curve fit does not allow zero-sized bounds, so use epsilon
-                err = abs(value) * epsilon / 2
-                self._upper_bounds[idxs] = value + err
-                self._lower_bounds[idxs] = value - err
+                self._upper_bounds[idxs] = value + epsilon / 2
+                self._lower_bounds[idxs] = value - epsilon / 2
                 self._p0[idxs] = value
                 self._is_bound[idxs] = True
             case CFBoundType.GREATER:
@@ -512,57 +511,81 @@ class CurveFit(GraphableAnalysis, ABC):
                 "therefore, cannot be compared."
             )
 
-        constrained_model = self._clone(self)
-        constrained_model._p0 = self._popt.copy()
+        null_model = self._clone(self)
+        null_model._p0 = self._popt.copy()
 
         for param in params:
-            constrained_model.add_constraint(param)
+            null_model.add_constraint(param)
 
-        constrained_model.fit()
-        comparison_method = CFComparisonMethod.from_str(method)
+        null_model.fit()
+        cmp_method = CFComparisonMethod.from_str(method)
 
         null = f"{", ".join(params)} same for all datasets"
         alt = f"{", ".join(params)} different for at least one dataset"
 
-        if comparison_method is CFComparisonMethod.F:
-            ftest = ExtraSumOfSquaresFTest(
-                constrained_model,
-                self,
-            )
-            ftest.analyze()
-            res = ftest._result[self._GLOBAL_NAME]
-            conclusion = "Reject" if res.p < alpha else "Accept"
-            preferred_model = alt if res.p < alpha else null
-            spacing = 23
+        if cmp_method is CFComparisonMethod.F:
+            cmp = ExtraSumOfSquaresFTest(null_model, self, alpha)
+        else:
+            cmp = AICComparison(null_model, self, alpha)
 
-            LOG.info(
-                "Comparison of fits\n"
-                f"{"Null hypothesis":<{spacing}} {null}\n"
-                f"{"Alternative hypothesis":<{spacing}} {alt}\n"
-                f"{"P value":<{spacing}} {res.p:.3g}\n"
-                f"{"Alpha":<{spacing}} {alpha:.1g}\n"
-                f"{"Conclusion":<{spacing}} {conclusion} null hypothesis\n"
-                f"{"Preferred model":<{spacing}} {preferred_model}"
-            )
-        else:  # AIC Comparison
-            aic = AICComparison(constrained_model, self)
-            aic.analyze()
-            res = aic._result[self._GLOBAL_NAME]
-            preferred_model = alt if res.p2 > res.p1 else null
-            spacing = 27
+        cmp.analyze()
+        cmp._report(null, alt)
 
-            LOG.info(
-                "Comparison of fits\n"
-                f"{"Simpler model":<{spacing}} {null}\n"
-                f"{"Simple model probability":<{spacing}} {res.p1:.2%}\n"
-                f"{"Complex model":<{spacing}} {alt}\n"
-                f"{"Complex model probability":<{spacing}} {res.p2:.2%}\n"
-                f"{"Ratio of probabilities":<{spacing}} {res.p_ratio:.3g}\n"
-                f"{"Preferred model":<{spacing}} {preferred_model}\n"
-                f"{"Difference in AICc":<{spacing}} {res.delta_aicc:.3g}"
-            )
+        return cmp._result[self._GLOBAL_NAME]
 
-        return res
+    def compare_best_fit_parameter_with_value(
+        self,
+        param: str,
+        value: float,
+        *,
+        method: Literal["aic", "f"],
+        alpha: float = 0.05,
+    ) -> dict[str, ExtraSumOfSquaresFTestResult] | dict[str, AICComparisonResult]:
+        """For each dataset, does the best-fit value of the parameter differ
+        from a hypothetical value?
+
+        For each dataset, determine whether the best-fit value is statistically
+        distingushable from a hypothetical value.
+
+        Args:
+            param: The parameter to constrain
+            value: The hypothetical value, typically 0 or 1
+            method: The comparison method to use; "aic" for Akiake's Information
+                Criterion, "f" for extra sum-of-squares F-test
+            alpha: The threshold p-value to select model two in the F-test
+                analysis, ignored for AIC comparisons
+
+        Returns:
+            The model comparisons for each dataset.
+
+        Raises:
+            ValueError: If the selected parameter is already bound to a value.
+        """
+        if not self._fitted:
+            self.fit()
+
+        p_i = self._get_param_indices(param)
+        if np.any(self._is_bound[p_i]):
+            raise ValueError(f"{param} has been bound to a value")
+
+        null_model = self._clone(self)
+        null_model._p0 = self._popt.copy()
+        null_model.add_bound(param, "equal", value)
+        null_model.fit()
+
+        null = f"{param} = {value}"
+        alt = f"{param} unconstrained"
+        cmp_method = CFComparisonMethod.from_str(method)
+
+        if cmp_method is CFComparisonMethod.F:
+            cmp = ExtraSumOfSquaresFTest(null_model, self, alpha)
+        else:
+            cmp = AICComparison(null_model, self, alpha)
+
+        cmp.analyze()
+        cmp._report(null, alt)
+
+        return cmp._result
 
     @override
     def draw(
@@ -972,6 +995,7 @@ class CurveFit(GraphableAnalysis, ABC):
         out._p0 = x._p0.copy()
         out._lower_bounds = x._lower_bounds.copy()
         out._upper_bounds = x._upper_bounds.copy()
+        out._bounds = out._lower_bounds, out._upper_bounds
         out._is_bound = x._is_bound.copy()
         out._is_constrained = x._is_constrained.copy()
         out._replicate_policy = x._replicate_policy
