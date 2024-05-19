@@ -7,7 +7,8 @@ def setup_logger() -> logging.Logger:
     log.setLevel(logging.DEBUG)
 
     formatter = logging.Formatter(
-        "[%(levelname)s] - %(asctime)s - %(name)s - %(message)s")
+        "[%(levelname)s] - %(asctime)s - %(name)s - %(message)s"
+    )
 
     stream_handler = logging.StreamHandler(sys.stdout)
     stream_handler.setLevel(logging.DEBUG)
@@ -15,5 +16,6 @@ def setup_logger() -> logging.Logger:
     log.addHandler(stream_handler)
 
     return log
+
 
 LOG = setup_logger()

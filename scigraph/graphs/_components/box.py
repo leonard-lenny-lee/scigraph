@@ -34,9 +34,17 @@ class BoxAndWhiskers(GraphComponent):
             props = graph.plot_properties[id]
             bw_kw = props.box_and_whisker_kw()
             bw_kw.update(**self.kw)
-            bplot = ax.boxplot(x[i], vert=vert, whis=self.whis, positions=[i], 
-                               patch_artist=True, labels=[id], zorder=1, **bw_kw)
-            bplot['boxes'][0].set_facecolor(props.barcolor)
+            bplot = ax.boxplot(
+                x[i],
+                vert=vert,
+                whis=self.whis,
+                positions=[i],
+                patch_artist=True,
+                labels=[id],
+                zorder=1,
+                **bw_kw,
+            )
+            bplot["boxes"][0].set_facecolor(props.barcolor)
 
     @override
     def draw_grouped(self, graph: GroupedGraph, ax: Axes) -> None:
@@ -50,9 +58,16 @@ class BoxAndWhiskers(GraphComponent):
             bw_kw = props.box_and_whisker_kw()
             bw_kw.update(**self.kw)
             bw_kw["widths"] *= width_adjustment_factor
-            bplot = ax.boxplot(y[id].T, vert=vert, whis=self.whis, positions=x_,
-                               patch_artist=True, zorder=1, **bw_kw)
-            bplot['boxes'][0].set_facecolor(props.barcolor)
+            bplot = ax.boxplot(
+                y[id].T,
+                vert=vert,
+                whis=self.whis,
+                positions=x_,
+                patch_artist=True,
+                zorder=1,
+                **bw_kw,
+            )
+            bplot["boxes"][0].set_facecolor(props.barcolor)
 
     @classmethod
     @override

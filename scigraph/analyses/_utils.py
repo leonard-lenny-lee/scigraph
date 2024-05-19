@@ -1,4 +1,3 @@
-
 def generate_p_summary(p: float) -> str:
     if p <= 0.0001:
         out = "****"

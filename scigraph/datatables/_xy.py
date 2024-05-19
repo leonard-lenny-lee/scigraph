@@ -49,13 +49,13 @@ class XYTable(DataTable, RowStatsI):
         Data in an XYTable is defined by an X and Y coordinate. The first
         column defines the X values, while the remaining columns defines Y
         values. X and Y columns are further divided into subcolumns which
-        define replicate values. Errors are computed from replicate values in 
+        define replicate values. Errors are computed from replicate values in
         subcolumns.
 
         Args:
-            values: Array containing the raw data, must be numerical and 
+            values: Array containing the raw data, must be numerical and
                 2-dimensional. This will be coerced into NumPy np.float64.
-            n_x_replicates: The number of replicates which define the X column. 
+            n_x_replicates: The number of replicates which define the X column.
             n_y_replicates: The number of replicates which define each Y column.
             n_datasets: The number of Y columns.
             dataset_names: The name of the Y columns.
@@ -78,7 +78,7 @@ class XYTable(DataTable, RowStatsI):
             * x_title = "Hours"
             * y_title = "Response, %"
 
-             Hours  Control               Treated            
+             Hours  Control               Treated
                   1       1      2      3       1     2     3
             0   0.0    45.0   34.0    NaN    34.0  31.0  29.0
             1   6.0    56.0   58.0   61.0    41.0  43.0  42.0
@@ -131,10 +131,7 @@ class XYTable(DataTable, RowStatsI):
         start_col = dataset_idx * self._n_y_replicates
         end_col = start_col + self._n_y_replicates
 
-        return DataSet(
-            x=self.x_values,
-            y=self.y_values[:, start_col:end_col]
-       )
+        return DataSet(x=self.x_values, y=self.y_values[:, start_col:end_col])
 
     @property
     @override
@@ -143,11 +140,11 @@ class XYTable(DataTable, RowStatsI):
 
     @property
     def y_values(self) -> NDArray:
-        return self._values[:, self._n_x_replicates:]
+        return self._values[:, self._n_x_replicates :]
 
     @property
     def x_values(self) -> NDArray:
-        return self._values[:, :self._n_x_replicates]
+        return self._values[:, : self._n_x_replicates]
 
     @property
     def n_x_replicates(self) -> int:
@@ -190,7 +187,7 @@ class XYTable(DataTable, RowStatsI):
         self._dataset_index_map: dict[str, int] = dict(
             zip(self._dataset_names, range(self._n_datasets))
         )
-    
+
     ## Graph factories ##
 
     def create_xy_graph(self, *args, **kwargs) -> XYGraph:
@@ -207,6 +204,7 @@ class XYTable(DataTable, RowStatsI):
             An XYGraph instance bound by the current XYTable instance.
         """
         from scigraph.graphs import XYGraph
+
         return XYGraph(self, *args, **kwargs)
 
     def create_column_graph(self, *args, **kwargs) -> ColumnGraph:
@@ -226,14 +224,13 @@ class XYTable(DataTable, RowStatsI):
             An ColumnGraph instance bound by the current XYTable instance.
         """
         from scigraph.graphs import ColumnGraph
+
         return ColumnGraph.from_xy_table(self, *args, **kwargs)
 
     ## Analysis factories and implementations ##
 
     def row_statistics(
-        self,
-        scope: Literal["row", "dataset"],
-        *stats: str
+        self, scope: Literal["row", "dataset"], *stats: str
     ) -> RowStatistics:
         """Create a RowStatistics instance.
 
@@ -253,6 +250,7 @@ class XYTable(DataTable, RowStatsI):
             A RowStatistics instance
         """
         from scigraph.analyses import RowStatistics
+
         return RowStatistics(self, scope, *stats)
 
     @override

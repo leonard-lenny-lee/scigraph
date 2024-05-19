@@ -57,15 +57,12 @@ class ContinuousAxis(SGAxis):
         else:
             scale_param = SG_DEFAULTS.query_schema(key)
             if val not in scale_param.opt:
-                raise ValueError(
-                    f"Invalid scale argument. Options: {scale_param.opt}"
-                )
+                raise ValueError(f"Invalid scale argument. Options: {scale_param.opt}")
         assert isinstance(val, str)
         self._scale = val
-        
+
         # Change which format if current is not longer valid
-        if (hasattr(self, "_format") 
-                and self._format not in self.allowed_formats):
+        if hasattr(self, "_format") and self._format not in self.allowed_formats:
             self._format = self._default_fmt
 
     @property

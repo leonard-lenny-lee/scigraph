@@ -35,7 +35,6 @@ class DataTable(ABC):
         if values.ndim != 2:
             raise ValueError("Expected 2D matrix.")
         return values
-        
 
     @abstractmethod
     def as_df(self) -> DataFrame:
@@ -125,14 +124,12 @@ class DataTable(ABC):
 
     @staticmethod
     def _default_names(
-        n: int,
-        prefix: str = "Group",
-        numeric_suffix: bool = False
+        n: int, prefix: str = "Group", numeric_suffix: bool = False
     ) -> list[str]:
         """Helper function to generate a sequence of names. For example:
         [Group A, Group B, ...] or [Row 1, Row 2, ...],
         """
-        ascii_a = ord('A')
+        ascii_a = ord("A")
         names = []
         for i in range(n):
             if numeric_suffix:

@@ -8,7 +8,7 @@ from numpy.typing import NDArray
 from pandas import DataFrame
 from matplotlib.axes import Axes
 
-from scigraph.graphs.abc import GraphComponent 
+from scigraph.graphs.abc import GraphComponent
 from scigraph._options import ErrorbarType
 import scigraph.analyses._stats as sgstats
 
@@ -34,8 +34,7 @@ class ErrorBars(GraphComponent, ABC):
             (props := graph.plot_properties[id].errorbar_kw()).update(**self.kw)
             y = ori[id]
             y_err = err[id] if draw_y_errors else None
-            ax.errorbar(x, y, xerr=x_err, yerr=y_err, 
-                        **self.kw, **props)
+            ax.errorbar(x, y, xerr=x_err, yerr=y_err, **self.kw, **props)
 
     @override
     def draw_column(self, graph: ColumnGraph, ax: Axes) -> None:
@@ -47,8 +46,7 @@ class ErrorBars(GraphComponent, ABC):
 
         for i, id in enumerate(graph.table.dataset_ids):
             (props := graph.plot_properties[id].errorbar_kw()).update(**self.kw)
-            ax.errorbar(x[i], yori[i], xerr=xerr[i], yerr=yerr[i],
-                        **self.kw, **props)
+            ax.errorbar(x[i], yori[i], xerr=xerr[i], yerr=yerr[i], **self.kw, **props)
 
     @override
     def draw_grouped(self, graph: GroupedGraph, ax: Axes) -> None:
@@ -64,9 +62,8 @@ class ErrorBars(GraphComponent, ABC):
             props.update(**self.kw)
             x_, y_, xerr_, yerr_ = x[i], yori[id], xerr, yerr[id]
             if not graph._is_vertical:
-                x_, y_, xerr_, yerr_= y_, x_, yerr_, xerr_
-            ax.errorbar(x_, y_, xerr=xerr_, yerr=yerr_,
-                        **self.kw, **props)
+                x_, y_, xerr_, yerr_ = y_, x_, yerr_, xerr_
+            ax.errorbar(x_, y_, xerr=xerr_, yerr=yerr_, **self.kw, **props)
 
     @abstractmethod
     def _prepare_xy(self, graph: XYGraph, /) -> tuple[DataFrame, Errors]: ...
@@ -129,27 +126,20 @@ class CI95ErrorBars(ErrorBars):
     @override
     def _prepare_xy(self, graph: XYGraph) -> tuple[DataFrame, Errors]:
         ori = graph.table._row_statistics_by_dataset(sgstats.Basic.mean)
-        err = graph.table._row_statistics_by_dataset(
-            sgstats.ConfidenceInterval.mean
-        )
+        err = graph.table._row_statistics_by_dataset(sgstats.ConfidenceInterval.mean)
         return ori, err
 
     @override
     def _prepare_column(self, graph: ColumnGraph) -> tuple[NDArray, NDArray]:
         yori = graph.table._reduce_by_column(sgstats.Basic.mean)
-        yerr = graph.table._reduce_by_column(
-            sgstats.ConfidenceInterval.mean
-        )
+        yerr = graph.table._reduce_by_column(sgstats.ConfidenceInterval.mean)
         return yori, yerr
 
     @override
     def _prepare_grouped(self, graph: GroupedGraph) -> tuple[DataFrame, Errors]:
         ori = graph.table._row_statistics_by_dataset(sgstats.Basic.mean)
-        err = graph.table._row_statistics_by_dataset(
-            sgstats.ConfidenceInterval.mean
-        )
+        err = graph.table._row_statistics_by_dataset(sgstats.ConfidenceInterval.mean)
         return ori, err
-
 
 
 class RangeErrorBars(ErrorBars):
@@ -183,12 +173,8 @@ class GeometricSDErrorBars(ErrorBars):
 
     @override
     def _prepare_xy(self, graph: XYGraph) -> tuple[DataFrame, Errors]:
-        ori = graph.table._row_statistics_by_dataset(
-            sgstats.Advanced.geometric_mean
-        )
-        err = graph.table._row_statistics_by_dataset(
-            sgstats.Advanced.geometric_sd
-        )
+        ori = graph.table._row_statistics_by_dataset(sgstats.Advanced.geometric_mean)
+        err = graph.table._row_statistics_by_dataset(sgstats.Advanced.geometric_sd)
         return ori, err
 
     @override
@@ -199,12 +185,8 @@ class GeometricSDErrorBars(ErrorBars):
 
     @override
     def _prepare_grouped(self, graph: GroupedGraph) -> tuple[DataFrame, Errors]:
-        ori = graph.table._row_statistics_by_dataset(
-            sgstats.Advanced.geometric_mean
-        )
-        err = graph.table._row_statistics_by_dataset(
-            sgstats.Advanced.geometric_sd
-        )
+        ori = graph.table._row_statistics_by_dataset(sgstats.Advanced.geometric_mean)
+        err = graph.table._row_statistics_by_dataset(sgstats.Advanced.geometric_sd)
         return ori, err
 
 

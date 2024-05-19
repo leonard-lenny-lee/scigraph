@@ -33,9 +33,7 @@ class DescriptiveStatistics(Analysis):
 
     def add_statistics(self, *stats: str) -> None:
         for stat in stats:
-            self._statistics.append(
-                SummaryStatistic.from_str(stat)
-            )
+            self._statistics.append(SummaryStatistic.from_str(stat))
 
     @override
     def analyze(self) -> DataFrame:

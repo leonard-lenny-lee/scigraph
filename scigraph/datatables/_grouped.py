@@ -43,7 +43,7 @@ class GroupedTable(DataTable, RowStatsI):
         if dataset_names is None:
             dataset_names = self._default_names(n_datasets)
         if row_names is None:
-            row_names = self._default_names(n_rows, "Row", numeric_suffix= True)
+            row_names = self._default_names(n_rows, "Row", numeric_suffix=True)
 
         self.dataset_names = dataset_names
         self.row_names = row_names
@@ -106,16 +106,16 @@ class GroupedTable(DataTable, RowStatsI):
         grouping: Literal["interleaved", "separated", "stacked"],
     ) -> GroupedGraph:
         from scigraph.graphs import GroupedGraph
+
         return GroupedGraph(self, direction, grouping)
 
     ## Analysis factories and implementations ##
 
     def row_statistics(
-        self,
-        scope: Literal["row", "dataset"],
-        *stats: str
+        self, scope: Literal["row", "dataset"], *stats: str
     ) -> RowStatistics:
         from scigraph.analyses import RowStatistics
+
         return RowStatistics(self, scope, *stats)
 
     @override

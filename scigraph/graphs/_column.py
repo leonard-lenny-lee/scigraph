@@ -8,12 +8,20 @@ import numpy as np
 from scigraph.datatables import XYTable, ColumnTable
 from scigraph.graphs.abc import Graph
 from scigraph.graphs._components import (
-    Points, ErrorBars, ConnectingLine, Bars, BoxAndWhiskers
+    Points,
+    ErrorBars,
+    ConnectingLine,
+    Bars,
+    BoxAndWhiskers,
 )
 from scigraph.graphs._components.axis import ContinuousAxis, CategoricalAxis
 from scigraph._options import (
-    ColumnGraphDirection, PointsType, ConnectingLineType, ErrorbarType,
-    BarType, LineType
+    ColumnGraphDirection,
+    PointsType,
+    ConnectingLineType,
+    ErrorbarType,
+    BarType,
+    LineType,
 )
 
 if TYPE_CHECKING:
@@ -60,7 +68,7 @@ class ColumnGraph(Graph[ColumnTable]):
     ) -> Self:
         self._register_component(ty, PointsType, Points, plot_kw)
         return self
-        
+
     def add_errorbars(
         self,
         ty: Literal["sd", "geometric sd", "sem", "ci95", "range"],
@@ -80,7 +88,7 @@ class ColumnGraph(Graph[ColumnTable]):
             ty, ConnectingLineType, ConnectingLine, plot_kw, join_nan=join_nan
         )
         return self
-        
+
     def add_bars(
         self,
         ty: Literal["mean", "median", "geometric mean"],
@@ -98,9 +106,7 @@ class ColumnGraph(Graph[ColumnTable]):
         return self
 
     def add_box_and_whiskers(
-        self,
-        whis: float | tuple[float, float] = 1.5,
-        **plot_kw
+        self, whis: float | tuple[float, float] = 1.5, **plot_kw
     ) -> Self:
         self._register_component("", None, BoxAndWhiskers, plot_kw, whis=whis)
         return self

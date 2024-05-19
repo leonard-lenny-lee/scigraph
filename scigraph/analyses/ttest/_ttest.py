@@ -1,7 +1,13 @@
 from __future__ import annotations
 
-__all__ = ["StudentsTTest", "WelchTTest", "PairedTTest", "MannWhitneyUTest",
-           "KolmogorovSmirnovTest", "WilcoxonSignedRankTest"]
+__all__ = [
+    "StudentsTTest",
+    "WelchTTest",
+    "PairedTTest",
+    "MannWhitneyUTest",
+    "KolmogorovSmirnovTest",
+    "WilcoxonSignedRankTest",
+]
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -105,10 +111,12 @@ class TTest(GraphableAnalysis):
 
     def _ttest(self, ttest, **kwargs) -> TTestResult:
         a, b = self._get_ab()
-        alternative = self._direction.to_str('-')
-        r = ttest(a, b, nan_policy='omit', alternative=alternative, **kwargs)
+        alternative = self._direction.to_str("-")
+        r = ttest(a, b, nan_policy="omit", alternative=alternative, **kwargs)
         t, p, df = r.statistic, r.pvalue, r.df  # type: ignore
-        t: float; p: float; df: float
+        t: float
+        p: float
+        df: float
 
         p_summary = generate_p_summary(p)
         signficant = p < self._confidence_level
@@ -116,9 +124,19 @@ class TTest(GraphableAnalysis):
         mean_difference = a_mean - b_mean
         ci = r.confidence_interval()
 
-        return TTestResult(p, p_summary, signficant, self._confidence_level,
-                           alternative, t, df, a_mean, b_mean, mean_difference,
-                           ci)
+        return TTestResult(
+            p,
+            p_summary,
+            signficant,
+            self._confidence_level,
+            alternative,
+            t,
+            df,
+            a_mean,
+            b_mean,
+            mean_difference,
+            ci,
+        )
 
     @property
     @override
@@ -193,20 +211,26 @@ class UTestResult(_Result):
 
 
 class MannWhitneyUTest(TTest):
-    
+
     @override
     def analyze(self) -> UTestResult:
         a, b = self._get_ab()
         alternative = self._direction.to_str("-")
-        r = scipy.stats.mannwhitneyu(a, b, alternative=alternative,
-                                     nan_policy="omit")  # type: ignore
+        r = scipy.stats.mannwhitneyu(
+            a, b, alternative=alternative, nan_policy="omit"
+        )  # type: ignore
 
         p_summary = generate_p_summary(r.pvalue)
         significant = r.pvalue < self._confidence_level
 
-        self._result = UTestResult(r.pvalue, p_summary, significant,
-                                   self._confidence_level, alternative,
-                                   r.statistic)
+        self._result = UTestResult(
+            r.pvalue,
+            p_summary,
+            significant,
+            self._confidence_level,
+            alternative,
+            r.statistic,
+        )
 
         return self._result
 
@@ -235,8 +259,9 @@ class KolmogorovSmirnovTest(TTest):
         p_summary = generate_p_summary(r.pvalue)
         significant = r.pvalue < self._confidence_level
 
-        self._result = KSTestResult(r.pvalue, p_summary, significant,
-                                    self._confidence_level, r.statistic)
+        self._result = KSTestResult(
+            r.pvalue, p_summary, significant, self._confidence_level, r.statistic
+        )
 
         return self._result
 
@@ -257,7 +282,7 @@ class WilcoxonTestResult(_Result):
 
 
 class WilcoxonSignedRankTest(TTest):
-    
+
     def __init__(
         self,
         table: ColumnTable,
@@ -273,16 +298,21 @@ class WilcoxonSignedRankTest(TTest):
     def analyze(self) -> WilcoxonTestResult:
         a, b = self._get_ab()
         alternative = self._direction.to_str("-")
-        
-        r = scipy.stats.wilcoxon(a, b, self._zero_method.to_str(),
-                                 alternative=alternative,
-                                 nan_policy="omit")  # type: ignore
+
+        r = scipy.stats.wilcoxon(
+            a, b, self._zero_method.to_str(), alternative=alternative, nan_policy="omit"
+        )  # type: ignore
 
         p_summary = generate_p_summary(r.pvalue)
         significant = r.pvalue < self._confidence_level
 
-        self._result = WilcoxonTestResult(r.pvalue, p_summary, significant,
-                                          self._confidence_level, alternative,
-                                          r.statistic)
-        
+        self._result = WilcoxonTestResult(
+            r.pvalue,
+            p_summary,
+            significant,
+            self._confidence_level,
+            alternative,
+            r.statistic,
+        )
+
         return self._result

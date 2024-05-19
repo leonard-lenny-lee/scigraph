@@ -11,8 +11,7 @@ def set_decimal_format(_: Axis) -> None:
 
 
 def set_antilog_format(axis: Axis) -> None:
-    formatter = FuncFormatter(lambda x, _:
-                              "%s" % int(x) if math.log10(x) > 0 else x)
+    formatter = FuncFormatter(lambda x, _: "%s" % int(x) if math.log10(x) > 0 else x)
     axis.set_major_formatter(formatter)
 
 

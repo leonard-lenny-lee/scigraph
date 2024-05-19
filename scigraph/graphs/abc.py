@@ -67,15 +67,14 @@ class Graph[T: DataTable](ABC):
 
         schema_key = f"graphs.{self._schema_access_key()}"
         props = SG_DEFAULTS[schema_key]
-        static_props = {k: v for k, v in props.items()
-                        if not isinstance(v, list)}
+        static_props = {k: v for k, v in props.items() if not isinstance(v, list)}
         cycles = {k: cycle(v) for k, v in props.items() if isinstance(v, list)}
         dataset_props = {}
 
         for ds_id, *p in zip(self.table.dataset_ids, *cycles.values()):
             cyclic_props = dict(zip(cycles.keys(), p))
             dataset_props[ds_id] = PlotProps(**static_props, **cyclic_props)
-        
+
         self._plot_properties = dataset_props
 
     def _compose_legend(self, ax: Axes):

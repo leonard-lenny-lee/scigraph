@@ -6,8 +6,9 @@ import matplotlib.pyplot as plt
 
 
 ss_dir = pathlib.Path(os.path.dirname(__file__)).joinpath("stylesheets")
-available_ss = [f.replace(".mplstyle", "") for f in os.listdir(ss_dir)
-                if f.endswith(".mplstyle")]
+available_ss = [
+    f.replace(".mplstyle", "") for f in os.listdir(ss_dir) if f.endswith(".mplstyle")
+]
 
 
 def _get_stylesheet_path(ss_name) -> pathlib.Path:

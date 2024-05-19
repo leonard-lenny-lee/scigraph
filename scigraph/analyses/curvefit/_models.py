@@ -1,9 +1,19 @@
 from __future__ import annotations
 
-__all__ = ["Constant", "Linear", "Polynomial", "ExponentialDecay",
-           "PiecewiseConstantExponentialDecay", "ExponentialGrowth",
-           "Gaussian", "Lorentzian", "Sinusoid", "Logistic3Parameter",
-           "Logistic4Parameter", "Logistic5Parameter"]
+__all__ = [
+    "Constant",
+    "Linear",
+    "Polynomial",
+    "ExponentialDecay",
+    "PiecewiseConstantExponentialDecay",
+    "ExponentialGrowth",
+    "Gaussian",
+    "Lorentzian",
+    "Sinusoid",
+    "Logistic3Parameter",
+    "Logistic4Parameter",
+    "Logistic5Parameter",
+]
 
 from functools import cached_property
 from typing import override, TYPE_CHECKING
@@ -58,7 +68,7 @@ class Polynomial(CurveFit):
     def _f(x: NDArray, *args: float) -> NDArray:
         out = np.zeros(len(x))
         for degree, coef in enumerate(args):
-            out += coef * x ** degree
+            out += coef * x**degree
         return out
 
 
@@ -75,8 +85,9 @@ class PiecewiseConstantExponentialDecay(CurveFit):
     @override
     @staticmethod
     def _f(x: NDArray, x0: float, y0: float, c: float, k: float) -> NDArray:  # type: ignore
-        return np.piecewise(x, [x < x0, x >= x0],
-                            [y0, lambda x: c + (y0 - c) * np.exp(-k * (x - x0))])
+        return np.piecewise(
+            x, [x < x0, x >= x0], [y0, lambda x: c + (y0 - c) * np.exp(-k * (x - x0))]
+        )
 
 
 class ExponentialGrowth(CurveFit):
@@ -131,15 +142,24 @@ class Logistic4Parameter(CurveFit):
 
     @override
     @staticmethod
-    def _f(x: NDArray, slope: float, top: float, bottom: float,  # type: ignore
-           ec50: float) -> NDArray:
-        return bottom + (x ** slope) * (top - bottom) / (x ** slope + ec50 ** slope)
+    def _f(
+        x: NDArray, slope: float, top: float, bottom: float, ec50: float  # type: ignore
+    ) -> NDArray:
+        return bottom + (x**slope) * (top - bottom) / (x**slope + ec50**slope)
 
 
 class Logistic5Parameter(CurveFit):
 
     @override
     @staticmethod
-    def _f(x: NDArray, slope: float, top: float, bottom: float,  # type: ignore
-           ec50: float, s: float) -> NDArray:
-        return bottom + ((top - bottom) / ((1 + (2 ** (1 / s) - 1) * ((ec50 / x) ** slope)) ** s))
+    def _f(
+        x: NDArray,
+        slope: float,
+        top: float,
+        bottom: float,  # type: ignore
+        ec50: float,
+        s: float,
+    ) -> NDArray:
+        return bottom + (
+            (top - bottom) / ((1 + (2 ** (1 / s) - 1) * ((ec50 / x) ** slope)) ** s)
+        )

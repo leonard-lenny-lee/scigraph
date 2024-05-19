@@ -34,8 +34,8 @@ class Caption:
         spacing_before: float | None = None,
         spacing_after: float | None = None,
         linespacing: float | None = None,
-        vertical_alignment : str | None = None,
-        horizontal_alignment : str | None = None,
+        vertical_alignment: str | None = None,
+        horizontal_alignment: str | None = None,
     ) -> Self:
         key = "layout.caption.text."
         if ty not in ["h1", "h2", "p", "s"]:
@@ -92,8 +92,7 @@ class Caption:
         y -= pt_to_coordinate_delta(self.pad["bottom"], height)
 
         # Translate according to caption position
-        total_x_delta = x + max_width \
-            + pt_to_coordinate_delta(self.pad["right"], width)
+        total_x_delta = x + max_width + pt_to_coordinate_delta(self.pad["right"], width)
         total_y_delta = 1 - y
         translate_x, translate_y = 0, 0
 
@@ -132,19 +131,21 @@ class TextElement(CaptionElement):
     linespacing: float
     spacing_before: float
     spacing_after: float
-    vertical_alignment : str
-    horizontal_alignment : str
+    vertical_alignment: str
+    horizontal_alignment: str
 
     @override
     def draw(self, fig: Figure, x: float, y: float) -> MPLArtistWrapper:
         text = fig.text(
-            x, y, self.s,
+            x,
+            y,
+            self.s,
             size=self.size,
             weight=self.weight,
             color=self.color,
             linespacing=self.linespacing,
             va=self.vertical_alignment,
-            ha=self.horizontal_alignment
+            ha=self.horizontal_alignment,
         )
         return TextWrapper(text)
 
@@ -208,7 +209,7 @@ class Line2DWrapper(MPLArtistWrapper[Line2D]):
     def size(self) -> tuple[float, float]:
         bbox = self.artist.get_bbox()
         return bbox.width, bbox.height
-        
+
 
 class TextWrapper(MPLArtistWrapper[Text]):
 
@@ -228,10 +229,7 @@ class TextWrapper(MPLArtistWrapper[Text]):
         return width, height
 
 
-def pt_to_coordinate_delta(
-    pt: float,
-    fig_length_inches: float
-) -> float:
+def pt_to_coordinate_delta(pt: float, fig_length_inches: float) -> float:
     MPL_PT_PER_INCH = 72
     inches = pt / MPL_PT_PER_INCH
     return inches / fig_length_inches

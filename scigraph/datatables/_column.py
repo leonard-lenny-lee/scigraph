@@ -24,9 +24,7 @@ class ColumnTable(DataTable, DescStatsI):
     """
 
     def __init__(
-        self,
-        values: ArrayLike,
-        dataset_names: Optional[list[str]] = None
+        self, values: ArrayLike, dataset_names: Optional[list[str]] = None
     ) -> None:
         values = self._sanitize_values(values)
         _, n_cols = values.shape
@@ -57,10 +55,7 @@ class ColumnTable(DataTable, DescStatsI):
             idx = self._dataset_names.index(name)
         except ValueError as e:
             raise ValueError(f"{name} is not a dataset name.") from e
-        return DataSet(
-            x=None,
-            y=self._values[:, idx]
-        )
+        return DataSet(x=None, y=self._values[:, idx])
 
     @property
     def values(self) -> NDArray:
@@ -85,20 +80,22 @@ class ColumnTable(DataTable, DescStatsI):
     ## Graph factories ##
 
     def create_column_graph(
-        self,
-        direction: Literal["vertical", "horizontal"]
+        self, direction: Literal["vertical", "horizontal"]
     ) -> ColumnGraph:
         from scigraph.graphs import ColumnGraph
+
         return ColumnGraph(self, direction)
 
     def create_xy_graph(self) -> XYGraph:
         from scigraph.graphs import XYGraph
+
         return XYGraph.from_column_table(self)
 
     ## Analysis factories and implementations ##
 
     def descriptive_statistics(self, *stats: str) -> DescriptiveStatistics:
         from scigraph.analyses import DescriptiveStatistics
+
         return DescriptiveStatistics(self, *stats, subcolumn_policy="separate")
 
     @override

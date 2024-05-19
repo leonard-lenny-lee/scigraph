@@ -90,8 +90,11 @@ class DefaultsConfiguration:
             match error:
                 case MissingParam(_):
                     continue
-                case UnknownParam(k, _) | InvalidParamType(k, _, _) \
-                        | InvalidParamValue(k, _, _):
+                case (
+                    UnknownParam(k, _)
+                    | InvalidParamType(k, _, _)
+                    | InvalidParamValue(k, _, _)
+                ):
                     LOG.warn(error)
                     # Remove invalid configuration settings
                     error_count += 1
@@ -142,7 +145,7 @@ class DefaultsConfiguration:
             if key not in d:
                 errors.append(MissingParam(key_path))
                 continue
-            
+
             d_val = d[key]
             if isinstance(schema_val, dict):
                 # Branch node
@@ -155,7 +158,7 @@ class DefaultsConfiguration:
                         )
                     )
                     continue
-                self._validate(d_val, schema_val, errors, prefix+key)
+                self._validate(d_val, schema_val, errors, prefix + key)
                 continue
 
             assert isinstance(schema_val, Param)
@@ -174,7 +177,7 @@ class DefaultsConfiguration:
                         InvalidParamType(
                             param_name=key_path,
                             expected_type=schema_val.ty,
-                            provided_type=type(item)
+                            provided_type=type(item),
                         )
                     )
                     continue
@@ -194,7 +197,7 @@ class DefaultsConfiguration:
         for unknown_key in unknown_keys:
             errors.append(
                 UnknownParam(
-                    param_name=prefix+unknown_key,
+                    param_name=prefix + unknown_key,
                     value=d[unknown_key],
                 )
             )
@@ -212,7 +215,7 @@ class DefaultsConfiguration:
 
     def _flatten(self, d: dict[str, Any], out: dict[str, Any], prefix: str) -> None:
         if prefix != "":
-            prefix += '.'
+            prefix += "."
 
         for k, v in d.items():
             key = prefix + k

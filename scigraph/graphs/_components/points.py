@@ -29,7 +29,7 @@ class Points(GraphComponent, ABC):
             props = graph.plot_properties[id].point_kws()
             y = agg[id]
             props.update(**self.kw)
-            artist, = ax.plot(x, y, **props)
+            (artist,) = ax.plot(x, y, **props)
             graph._add_legend_artist(id, artist)
 
     @override
@@ -38,7 +38,7 @@ class Points(GraphComponent, ABC):
         y = self._prepare_column(graph)
         if not graph._is_vertical:
             x, y = y, x
-        
+
         for i, id in enumerate(graph.table.dataset_ids):
             props = graph.plot_properties[id].point_kws()
             props.update(**self.kw)
@@ -55,9 +55,8 @@ class Points(GraphComponent, ABC):
             x_, y_ = x[i], np.array(y[id].values)
             if not graph._is_vertical:
                 x_, y_ = y_, x_
-            artist, = ax.plot(x_, y_, **props)
+            (artist,) = ax.plot(x_, y_, **props)
             graph._add_legend_artist(id, artist)
-
 
     @abstractmethod
     def _prepare_xy(self, graph: XYGraph, /) -> DataFrame: ...
@@ -93,9 +92,7 @@ class GeometricMeanPoints(Points):
 
     @override
     def _prepare_xy(self, graph: XYGraph) -> DataFrame:
-        return graph.table._row_statistics_by_dataset(
-            sgstats.Advanced.geometric_mean
-        )
+        return graph.table._row_statistics_by_dataset(sgstats.Advanced.geometric_mean)
 
     @override
     def _prepare_column(self, graph: ColumnGraph) -> NDArray:
@@ -103,9 +100,7 @@ class GeometricMeanPoints(Points):
 
     @override
     def _prepare_grouped(self, graph: GroupedGraph) -> DataFrame:
-        return graph.table._row_statistics_by_dataset(
-            sgstats.Advanced.geometric_mean
-        )
+        return graph.table._row_statistics_by_dataset(sgstats.Advanced.geometric_mean)
 
 
 class MedianPoints(Points):
@@ -143,23 +138,23 @@ class IndividualPoints(Points):
             props.update(**self.kw)
             y = dataset.y.T.flatten()
             assert len(x) == len(y)
-            artist, = ax.plot(x, y, **props)
+            (artist,) = ax.plot(x, y, **props)
             graph._add_legend_artist(id, artist)
 
     @override
     def draw_column(self, graph: ColumnGraph, ax: Axes) -> None:
         x = np.linspace(0, graph.table.ncols - 1, graph.table.ncols)
         x = np.repeat(x, graph.table.nrows)
-        y = graph.table.values.flatten('F')
+        y = graph.table.values.flatten("F")
 
         if not graph._is_vertical:
             x, y = y, x
-        
+
         for i, id in enumerate(graph.table.dataset_ids):
             props = graph.plot_properties[id].point_kws()
             props.update(**self.kw)
-            x_slice = x[i*graph.table.nrows:(i+1)*graph.table.nrows]
-            y_slice = y[i*graph.table.nrows:(i+1)*graph.table.nrows]
+            x_slice = x[i * graph.table.nrows : (i + 1) * graph.table.nrows]
+            y_slice = y[i * graph.table.nrows : (i + 1) * graph.table.nrows]
             ax.plot(x_slice, y_slice, **props)
 
     @override
@@ -172,12 +167,11 @@ class IndividualPoints(Points):
         for i, id in enumerate(graph.table.dataset_ids):
             props = graph.plot_properties[id].point_kws()
             props.update(**self.kw)
-            x_, y_ = x[i], y[:, i*n:(i+1)*n].ravel('F')
+            x_, y_ = x[i], y[:, i * n : (i + 1) * n].ravel("F")
             if not graph._is_vertical:
                 x_, y_ = y_, x_
-            artist, = ax.plot(x_, y_, **props)
+            (artist,) = ax.plot(x_, y_, **props)
             graph._add_legend_artist(id, artist)
-
 
     @override
     def _prepare_xy(self, _) -> Never:
@@ -198,7 +192,7 @@ class SwarmPoints(Points):
     def draw_column(self, graph: ColumnGraph, ax: Axes) -> None:
         x = np.linspace(0, graph.table.ncols - 1, graph.table.ncols)
         x = np.repeat(x, graph.table.nrows)
-        y = graph.table.values.flatten('F')
+        y = graph.table.values.flatten("F")
         # Use seaborn for swarm
         if not graph._is_vertical:
             orient = "h"
@@ -209,10 +203,18 @@ class SwarmPoints(Points):
         for i, id in enumerate(graph.table.dataset_ids):
             props = graph.plot_properties[id]
             s = slice(i * graph.table.nrows, (i + 1) * graph.table.nrows)
-            sns.swarmplot(x=x[s], y=y[s], orient=orient, legend=False,
-                          ax=ax, **self.kw, marker=props.marker,
-                          color=props.color, size=props.markersize,
-                          native_scale=True)
+            sns.swarmplot(
+                x=x[s],
+                y=y[s],
+                orient=orient,
+                legend=False,
+                ax=ax,
+                **self.kw,
+                marker=props.marker,
+                color=props.color,
+                size=props.markersize,
+                native_scale=True,
+            )
 
     @override
     def draw_grouped(self, graph: GroupedGraph, ax: Axes) -> None:
@@ -223,15 +225,24 @@ class SwarmPoints(Points):
 
         for i, id in enumerate(graph.table.dataset_ids):
             props = graph.plot_properties[id]
-            x_, y_ = x[i], y[:, i*n:(i+1)*n].ravel('F')
+            x_, y_ = x[i], y[:, i * n : (i + 1) * n].ravel("F")
             if not graph._is_vertical:
                 orient = "h"
                 x_, y_ = y_, x_
             else:
                 orient = "v"
-            sns.swarmplot(x=x_, y=y_, orient=orient, legend=False, ax=ax,
-                          **self.kw, marker=props.marker, color=props.color,
-                          size=props.markersize, native_scale=True)
+            sns.swarmplot(
+                x=x_,
+                y=y_,
+                orient=orient,
+                legend=False,
+                ax=ax,
+                **self.kw,
+                marker=props.marker,
+                color=props.color,
+                size=props.markersize,
+                native_scale=True,
+            )
 
     @override
     def draw_xy(self, *args, **kwargs) -> Never:
@@ -248,7 +259,6 @@ class SwarmPoints(Points):
     @override
     def _prepare_grouped(self, _) -> DataFrame:
         raise NotImplementedError
-
 
 
 _FACTORY_MAP: dict[PointsType, type[Points]] = {

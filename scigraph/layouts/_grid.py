@@ -28,11 +28,7 @@ class GridLayout(Layout):
         ]
 
     @override
-    def link_graph(
-        self,
-        graph: Graph,
-        key: tuple[int, int] | None = None
-    ) -> None:
+    def link_graph(self, graph: Graph, key: tuple[int, int] | None = None) -> None:
         super().link_graph(graph, key)
 
     @override

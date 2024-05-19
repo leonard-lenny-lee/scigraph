@@ -33,8 +33,7 @@ class Layout(ABC):
         self.set_position(key, graph)
 
     def add_caption(
-        self,
-        position: Literal["above", "right", "below", "left"]
+        self, position: Literal["above", "right", "below", "left"]
     ) -> Caption:
         caption = Caption(position)
         self._captions.append(caption)

@@ -8,7 +8,10 @@ import numpy as np
 from scigraph.datatables import XYTable
 from scigraph.graphs.abc import Graph
 from scigraph.graphs._components import (
-    Points, ErrorBars, ConnectingLine, ContinuousAxis
+    Points,
+    ErrorBars,
+    ConnectingLine,
+    ContinuousAxis,
 )
 from scigraph._options import PointsType, ErrorbarType, ConnectingLineType
 

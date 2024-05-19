@@ -10,13 +10,7 @@ class Param[T](NamedTuple):
     opt: set[T] | None = None
 
     def validate(self, arg: Any) -> bool:
-        return (
-            isinstance(arg, self.ty) 
-            and (
-                self.opt is None
-                or arg in self.opt
-            )
-        )
+        return isinstance(arg, self.ty) and (self.opt is None or arg in self.opt)
 
 
 # Generic Params
@@ -65,7 +59,7 @@ SCHEMA: Schema = {
         "grouped": {
             "x_title": String,
             "y_title": String,
-        }
+        },
     },
     "graphs": {
         "xy": {
@@ -75,7 +69,7 @@ SCHEMA: Schema = {
             "linewidth": VNum,
             "markersize": VNum,
             "capsize": VNum,
-            "capthickness": VNum
+            "capthickness": VNum,
         },
         "column": {
             "color": VString,
@@ -108,10 +102,10 @@ SCHEMA: Schema = {
                 "scale": Param(str, opt={"linear", "log10"}),
                 "format": {
                     "linear": Param(str, opt={"decimal", "power10", "antilog"}),
-                    "log10": Param(str, opt={"log10", "power10", "antilog"})
-                }
+                    "log10": Param(str, opt={"log10", "power10", "antilog"}),
+                },
             }
-        }
+        },
     },
     "analyses": {
         "ttest": {
@@ -129,7 +123,7 @@ SCHEMA: Schema = {
                 "linewidth": Num,
                 "linestyle": String,
             }
-        }
+        },
     },
     "layout": {
         "caption": {
@@ -149,7 +143,7 @@ SCHEMA: Schema = {
             "line": {
                 "dividing": LINE_SCHEMA,
                 "branding": LINE_SCHEMA,
-            }
+            },
         },
     },
 }

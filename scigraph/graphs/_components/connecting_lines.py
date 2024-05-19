@@ -1,6 +1,7 @@
 """
 Artists that connect average of replicates together, or individual replicates
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -12,12 +13,9 @@ import numpy as np
 from numpy.typing import NDArray
 from pandas import DataFrame
 
-from scigraph.graphs.abc import GraphComponent
-from scigraph._options import (
-    ColumnGraphDirection, ConnectingLineType, GroupedGraphDirection,
-    GroupedGraphGrouping,
-)
 import scigraph.analyses._stats as sgstats
+from scigraph.graphs.abc import GraphComponent
+from scigraph._options import ConnectingLineType, GroupedGraphGrouping
 
 if TYPE_CHECKING:
     from scigraph.graphs import XYGraph, ColumnGraph, GroupedGraph
@@ -41,11 +39,11 @@ class ConnectingLine(GraphComponent, ABC):
             if self.join_nan:
                 # Mask NaN values so there is a continuous joined line
                 x, y = self._mask_nan(x, y)
-            artist, = ax.plot(x, y, **props)
+            (artist,) = ax.plot(x, y, **props)
             graph._add_legend_artist(id, artist)
 
     @override
-    def draw_column(self, graph: ColumnGraph,  ax: Axes) -> None:
+    def draw_column(self, graph: ColumnGraph, ax: Axes) -> None:
         x = np.linspace(0, graph.table.ncols - 1, graph.table.ncols)
         y = self._prepare_column(graph)
         if not graph._is_vertical:
@@ -53,11 +51,7 @@ class ConnectingLine(GraphComponent, ABC):
 
         # It doesn't make sense for connecting lines between groups to have
         # different linestyles so use the first one provided
-        line_kws = (
-            graph
-            .plot_properties[graph.table.dataset_ids[0]]
-            .line_kws()
-        )
+        line_kws = graph.plot_properties[graph.table.dataset_ids[0]].line_kws()
         line_kws.update(**self.kw)
         ax.plot(x, y, **line_kws)
 
@@ -72,9 +66,8 @@ class ConnectingLine(GraphComponent, ABC):
             x_, y_ = x[i], np.array(y[id].values)
             if not graph._is_vertical:
                 x_, y_ = y_, x_
-            artist, = ax.plot(x_, y_, **props)
+            (artist,) = ax.plot(x_, y_, **props)
             graph._add_legend_artist(id, artist)
-        
 
     @abstractmethod
     def _prepare_xy(self, graph: XYGraph, /) -> DataFrame: ...
@@ -124,9 +117,7 @@ class GeometricMeanConnectingLine(ConnectingLine):
 
     @override
     def _prepare_xy(self, graph: XYGraph) -> DataFrame:
-        return graph.table._row_statistics_by_dataset(
-            sgstats.Advanced.geometric_mean
-        )
+        return graph.table._row_statistics_by_dataset(sgstats.Advanced.geometric_mean)
 
     @override
     def _prepare_column(self, graph: ColumnGraph) -> NDArray:
@@ -172,13 +163,9 @@ class IndividualConnectingLine(ConnectingLine):
             graph._add_legend_artist(id, artist)
 
     @override
-    def draw_column(self, graph: ColumnGraph,  ax: Axes) -> None:
+    def draw_column(self, graph: ColumnGraph, ax: Axes) -> None:
         x = np.linspace(0, graph.table.ncols - 1, graph.table.ncols)
-        line_kws = (
-            graph
-            .plot_properties[graph.table.dataset_ids[0]]
-            .line_kws()
-        )
+        line_kws = graph.plot_properties[graph.table.dataset_ids[0]].line_kws()
         line_kws.update(**self.kw)
         for y in graph.table.values:
             x_ = x
@@ -195,11 +182,11 @@ class IndividualConnectingLine(ConnectingLine):
         x = graph._x()
         y = graph.table._values
         n = graph.table._n_replicates
-            
+
         for i, id in enumerate(graph.table.dataset_ids):
             props = graph.plot_properties[id].line_kws()
             props.update(**self.kw)
-            for y_ in y[:, i*n:(i+1)*n].T:
+            for y_ in y[:, i * n : (i + 1) * n].T:
                 x_ = x[i]
                 if not graph._is_vertical:
                     x_, y_ = y_, x_
@@ -213,15 +200,12 @@ class IndividualConnectingLine(ConnectingLine):
         x = graph._x().T
         y = graph.table._values
 
-        line_kws = graph \
-            .plot_properties[graph.table.dataset_ids[0]] \
-            .line_kws()
+        line_kws = graph.plot_properties[graph.table.dataset_ids[0]].line_kws()
         line_kws["zorder"] = 0
         line_kws.update(**self.kw)
 
         for x, row in zip(x, y):
-            row = row.reshape(graph.table._n_datasets,
-                              graph.table._n_replicates).T
+            row = row.reshape(graph.table._n_datasets, graph.table._n_replicates).T
             for y_ in row:
                 x_ = x
                 if not graph._is_vertical:

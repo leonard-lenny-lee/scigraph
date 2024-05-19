@@ -42,7 +42,7 @@ class PlotProps:
             "capsize": self.capsize,
             "capthick": self.capthickness,
             "marker": "",
-            "ls": ""
+            "ls": "",
         }
 
     def bar_kw(self, vertical: bool = False) -> dict:
@@ -67,7 +67,7 @@ class PlotProps:
             "boxprops": {
                 "color": self.color,
                 "linewidth": self.baredgethickness,
-                 "linestyle": self.ls,
+                "linestyle": self.ls,
             },
             "whiskerprops": {
                 "color": self.color,
@@ -81,5 +81,5 @@ class PlotProps:
             "medianprops": {
                 "color": self.baredgecolor,
                 "linewidth": self.baredgethickness,
-            }
+            },
         }

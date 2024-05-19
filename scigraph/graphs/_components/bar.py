@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 
 class Bars(GraphComponent, ABC):
-    
+
     def __init__(self, kw: dict[str, Any], line_only: bool = False) -> None:
         super().__init__(kw)
         self.line_only = line_only
@@ -130,5 +130,5 @@ class MedianBars(Bars):
 _FACTORY_MAP = {
     BarType.MEAN: MeanBars,
     BarType.GEOMETRIC_MEAN: GeometricMeanBars,
-    BarType.MEDIAN:  MedianBars,
+    BarType.MEDIAN: MedianBars,
 }

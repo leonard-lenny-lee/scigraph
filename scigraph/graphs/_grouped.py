@@ -8,12 +8,22 @@ import numpy as np
 from scigraph.datatables import GroupedTable
 from scigraph.graphs.abc import Graph
 from scigraph.graphs._components import (
-    CategoricalAxis, ContinuousAxis, Points, ErrorBars, ConnectingLine, Bars,
+    CategoricalAxis,
+    ContinuousAxis,
+    Points,
+    ErrorBars,
+    ConnectingLine,
+    Bars,
     BoxAndWhiskers,
 )
 from scigraph._options import (
-    GroupedGraphDirection, GroupedGraphGrouping, PointsType, ErrorbarType,
-    ConnectingLineType, BarType, LineType
+    GroupedGraphDirection,
+    GroupedGraphGrouping,
+    PointsType,
+    ErrorbarType,
+    ConnectingLineType,
+    BarType,
+    LineType,
 )
 
 if TYPE_CHECKING:
@@ -67,7 +77,7 @@ class GroupedGraph(Graph[GroupedTable]):
     ) -> Self:
         self._register_component(ty, PointsType, Points, plot_kw)
         return self
-        
+
     def add_errorbars(
         self,
         ty: Literal["sd", "geometric sd", "sem", "ci95", "range"],
@@ -87,7 +97,7 @@ class GroupedGraph(Graph[GroupedTable]):
             ty, ConnectingLineType, ConnectingLine, plot_kw, join_nan=join_nan
         )
         return self
-        
+
     def add_bars(
         self,
         ty: Literal["mean", "median", "geometric mean"],
@@ -105,9 +115,7 @@ class GroupedGraph(Graph[GroupedTable]):
         return self
 
     def add_box_and_whiskers(
-        self,
-        whis: float | tuple[float, float] = 1.5,
-        **plot_kw
+        self, whis: float | tuple[float, float] = 1.5, **plot_kw
     ) -> Self:
         self._register_component("", None, BoxAndWhiskers, plot_kw, whis=whis)
         return self
