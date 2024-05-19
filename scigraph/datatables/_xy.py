@@ -188,6 +188,63 @@ class XYTable(DataTable, RowStatsI):
             zip(self._dataset_names, range(self._n_datasets))
         )
 
+    @classmethod
+    def from_dataframe(cls, df: pd.DataFrame) -> XYTable:
+        """Construct an XYTable from a pandas DataFrame.
+
+        The first column is assumed to be the X data, while remaining columns
+        are assumed to be Y datasets. If the DataFrame is MultiIndexed, top
+        level indices are assumed to the grouping columns, and each sublevel
+        indices are assumed to be replicates of that group.
+        """
+        if df.shape[1] < 1:
+            raise ValueError("DataFrame must be at least two columns.")
+
+        if df.columns.nlevels == 1:
+            values = df.values
+            columns = list(df.columns)
+            # First column is X series
+            n_x_replicates = 1
+            x_title = columns[0]
+            # All other columns are Y datasets, with no replicates
+            n_y_replicates = 1
+            n_datasets = df.shape[1] - 1
+            dataset_names = columns[1:]
+        else:  # MultiIndexed
+            values = []
+            columns = list(df.columns.get_level_values(0).unique())
+            # First column is X series
+            x_title = columns[0]
+            x = df[x_title]
+            if x.ndim > 1:
+                n_x_replicates = x.shape[1]
+                values.append(x.values)
+            else:
+                n_x_replicates = 1
+                values.append(np.atleast_2d(np.array(x.values)).T)
+            # All other columns are Y datasets
+            dataset_names = columns[1:]
+            n_datasets = len(dataset_names)
+            # Take the number of replicates to be the maximum of any dataset
+            n_y_replicates = (
+                df[dataset_names].columns.get_level_values(0).value_counts().max()
+            )
+            for y_title in columns[1:]:
+                y = df[y_title]
+                vals = np.array(y.values)
+                if y.shape[1] == n_y_replicates:
+                    values.append(vals)
+                else:
+                    # Pad out the missing columns with NaN values
+                    pad_width = n_y_replicates - y.shape[1]
+                    values.append(
+                        np.pad(vals, ((0, 0), (0, pad_width)), constant_values=np.nan)
+                    )
+            values = np.hstack(values)
+        return cls(
+            values, n_x_replicates, n_y_replicates, n_datasets, dataset_names, x_title
+        )
+
     ## Graph factories ##
 
     def create_xy_graph(self, *args, **kwargs) -> XYGraph:
