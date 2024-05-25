@@ -8,7 +8,7 @@ from functools import cached_property
 import inspect
 import itertools as it
 import logging
-import multiprocessing
+import multiprocessing.pool
 from typing import Literal, Optional, override, TYPE_CHECKING
 import warnings
 
@@ -309,13 +309,18 @@ class CurveFit(GraphableAnalysis, ABC):
         Returns:
             A summary dataframe of the confidence intervals obtained.
         """
-        fn = _BootstrapSample(self)
         parameters = []
         chunksize = round(n_samples / multiprocessing.cpu_count())
 
-        with multiprocessing.Pool() as p:
-            for fvar in p.imap_unordered(fn, range(n_samples), chunksize=chunksize):
+        logging.disable(logging.CRITICAL)
+
+        with multiprocessing.pool.ThreadPool() as p:
+            for fvar in p.imap_unordered(
+                self._bootstrap_sample, range(n_samples), chunksize=chunksize
+            ):
                 parameters.append(fvar)
+
+        logging.disable(logging.NOTSET)
 
         parameters = np.vstack(parameters)
 
@@ -703,7 +708,12 @@ class CurveFit(GraphableAnalysis, ABC):
 
         return tuple(out)
 
-    def _fit(self, xy: tuple[NDArray, ...]) -> dict[str, CurveFitResult | None]:
+    def _fit(
+        self,
+        xy: tuple[NDArray, ...],
+        *,
+        write: bool = True,
+    ) -> dict[str, CurveFitResult | None]:
         """Fit each dataset to the model separately"""
         res: dict[str, CurveFitResult | None] = {}
 
@@ -731,11 +741,18 @@ class CurveFit(GraphableAnalysis, ABC):
             sy_x = (rss / dof) ** 0.5
 
             res[id] = CurveFitResult(popt, pcov, dof, r2, rss, sy_x, n)
-            self._popt[s] = popt
+
+            if write:
+                self._popt[s] = popt
 
         return res
 
-    def _gfit(self, xy: tuple[NDArray, ...]) -> dict[str, CurveFitResult | None]:
+    def _gfit(
+        self,
+        xy: tuple[NDArray, ...],
+        *,
+        write: bool = True,
+    ) -> dict[str, CurveFitResult | None]:
         """Fit all the datasets at once. Use optimize.minimize with SLSQP
         method as it allows for constrained minimization problems.
         """
@@ -756,9 +773,11 @@ class CurveFit(GraphableAnalysis, ABC):
             LOG.warn("Global curve fit failed.")
             LOG.warn(f"SciPy minimzation error: {r.message}")
 
-        self._popt[:] = r.x
+        if write:
+            self._popt[:] = r.x
+            self._gres = r
+
         popts = r.x.reshape(self._n_included, self._n_params)
-        self._gres = r
         res = {}
 
         for popt, id, (x, y) in zip(popts, self._include, it.batched(xy, 2)):
@@ -842,6 +861,23 @@ class CurveFit(GraphableAnalysis, ABC):
     def _gbounds(self) -> list[list[float]]:
         """Reshape the bounds into a format for optimize.minimize"""
         return [list(bounds) for bounds in zip(*self._bounds)]
+
+    def _bootstrap_sample(self, *_) -> NDArray:
+        xy = self._prepare_xy(subsample=True)
+        out = np.full((self._n_included, self._n_params), np.nan)
+
+        if self._global_fit:
+            res = self._gfit(xy, write=False)
+        else:
+            res = self._fit(xy, write=False)
+
+        for i, id in enumerate(self._include):
+            r = res[id]
+            if r is None:
+                continue
+            out[i] = r.popt
+
+        return out.flatten()
 
     def _calculate_bands(
         self,
@@ -1011,31 +1047,3 @@ class CurveFitResult:
     rss: float
     sy_x: float
     n: int
-
-
-class _BootstrapSample:
-    """Callable for a single bootstrap sample. Wrapped like this to enable the
-    CurveFit object to be shared between processes.
-    """
-
-    def __init__(self, cf: CurveFit) -> None:
-        self.cf = cf
-
-    def __call__(self, *_) -> NDArray:
-        logging.disable(logging.CRITICAL)
-
-        xy = self.cf._prepare_xy(subsample=True)
-        out = np.full((self.cf._n_included, self.cf._n_params), np.nan)
-
-        if self.cf._global_fit:
-            res = self.cf._gfit(xy)
-        else:
-            res = self.cf._fit(xy)
-
-        for i, id in enumerate(self.cf._include):
-            r = res[id]
-            if r is None:
-                continue
-            out[i] = r.popt
-
-        return out.flatten()
