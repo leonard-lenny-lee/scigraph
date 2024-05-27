@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal, Optional, override, TYPE_CHECKING
+from typing import Literal, Optional, assert_type, override, TYPE_CHECKING
 
 from pandas import DataFrame, Index, MultiIndex
 
@@ -97,6 +97,15 @@ class GroupedTable(DataTable, RowStatsI):
     def row_names(self, names: list[str]) -> None:
         self._verify_names(names, self.nrows)
         self._row_names = names
+
+    @override
+    def _set_normalize_values(self, val: NDArray) -> None:
+        assert val.shape == self.values.shape
+        self._values = val
+
+    @override
+    @classmethod
+    def from_dataframe(cls, df: DataFrame, **_) -> DataTable: ...  # TODO
 
     ## Graph factories ##
 

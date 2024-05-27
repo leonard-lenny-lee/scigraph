@@ -48,7 +48,6 @@ class DataTable(ABC):
         Returns:
             DataFrame representation of the DataTable.
         """
-        ...
 
     @property
     @abstractmethod
@@ -69,7 +68,6 @@ class DataTable(ABC):
             may be None for DataTable objects which are not defined by an X
             coordinate.
         """
-        ...
 
     def datasets_itertuples(self) -> Iterator[tuple[str, DataSet]]:
         """Iterate through the datasets contained.
@@ -102,6 +100,13 @@ class DataTable(ABC):
     @title.setter
     def title(self, val: str) -> None:
         self._title = val
+
+    def _get_normalize_values(self) -> NDArray:
+        """The slice of values to be targeted by the Normalize analysis"""
+        return self.values
+
+    @abstractmethod
+    def _set_normalize_values(self, val: NDArray) -> None: ...
 
     def _verify_names(self, names: list[str], expected_n: int) -> None:
         """General helper function to validate user input. Use in setters of
@@ -142,6 +147,11 @@ class DataTable(ABC):
                     suffix = chr(ascii_a + k1) + chr(ascii_a + k2)
             names.append(f"{prefix} {suffix}")
         return names
+
+    @classmethod
+    @abstractmethod
+    def from_dataframe(cls, df: DataFrame, **kwargs) -> DataTable:
+        """Construct a DataTable object from a pandas DataFrame."""
 
 
 class DataSet(NamedTuple):

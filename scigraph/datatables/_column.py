@@ -77,6 +77,21 @@ class ColumnTable(DataTable, DescStatsI):
     def _reduce_by_column(self, f: Callable[..., float]) -> NDArray:
         return np.apply_along_axis(f, axis=0, arr=self._values)
 
+    @override
+    def _set_normalize_values(self, val: NDArray) -> None:
+        assert self.values.shape == val.shape
+        self._values = val
+
+    @override
+    @classmethod
+    def from_dataframe(cls, df: DataFrame, **_) -> DataTable:
+        """Construct a ColumnTable from a pandas DataFrame.
+
+        First level of the column are taken to be the dataset names.
+        """
+        dataset_names = df.columns.get_level_values(0)
+        return cls(df.values, list(dataset_names))
+
     ## Graph factories ##
 
     def create_column_graph(

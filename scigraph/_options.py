@@ -144,4 +144,28 @@ class CFComparisonMethod(Option):
     AIC             = auto()
     F               = auto()
 
+
+class NormalizeSubColumnPolicy(Option):
+    AVERAGE         = auto()
+    SEPARATE        = auto()
+
+
+class NormalizeZeroPolicy(Option):
+    MIN             = auto()
+    FIRST           = auto()
+    VALUE           = auto()
+
+
+class NormalizeOnePolicy(Option):
+    MAX             = auto()
+    LAST            = auto()
+    SUM             = auto()
+    MEAN            = auto()
+    VALUE           = auto()
+
+
+class NormalizeResult(Option):
+    PERCENTAGE      = auto()
+    FRACTION        = auto()
+
 # fmt: on

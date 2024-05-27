@@ -168,11 +168,21 @@ class XYTable(DataTable, RowStatsI):
         self._dataset_names = names
         self._generate_dataset_index_map()
 
-    def _columns(self) -> pd.MultiIndex:
+    @override
+    def _get_normalize_values(self) -> NDArray:
+        return self.y_values
+
+    @override
+    def _set_normalize_values(self, val: NDArray) -> None:
+        assert val.shape == self.y_values.shape
+        self._values[:, self._n_x_replicates :] = val
+
+    def _columns(self, include_x: bool = True) -> pd.MultiIndex:
         """Helper for as_df() to generate MultiIndexed columns."""
         tuples = []
-        for n in range(self._n_x_replicates):
-            tuples.append((self.x_title, n + 1))
+        if include_x:
+            for n in range(self._n_x_replicates):
+                tuples.append((self.x_title, n + 1))
         for dataset in self._dataset_names:
             for n in range(self._n_y_replicates):
                 tuples.append((dataset, n + 1))
@@ -188,8 +198,9 @@ class XYTable(DataTable, RowStatsI):
             zip(self._dataset_names, range(self._n_datasets))
         )
 
+    @override
     @classmethod
-    def from_dataframe(cls, df: pd.DataFrame) -> XYTable:
+    def from_dataframe(cls, df: pd.DataFrame, **_) -> XYTable:
         """Construct an XYTable from a pandas DataFrame.
 
         The first column is assumed to be the X data, while remaining columns
