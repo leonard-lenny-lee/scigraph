@@ -1,0 +1,41 @@
+# Matplotlib style
+
+font.family: STIXGeneral
+font.size: 8
+
+figure.figsize: 3.3, 2.5
+figure.dpi: 150
+figure.titlesize: 12
+figure.constrained_layout.use: True
+figure.constrained_layout.h_pad: 0.1
+figure.constrained_layout.w_pad: 0.1
+
+savefig.dpi: 300
+savefig.bbox: tight
+savefig.pad_inches: 0.05
+savefig.format: png
+
+xtick.major.size: 3
+xtick.major.width: 1.0
+xtick.labelsize: 8
+xtick.minor.visible: False
+
+ytick.major.size: 3
+ytick.major.width: 1.0
+ytick.labelsize: 8
+ytick.minor.visible: False
+
+axes.labelsize: 8
+axes.linewidth: 1.0
+axes.autolimit_mode: round_numbers
+
+axes.spines.top: False
+axes.spines.right: False
+
+legend.frameon: False
+legend.fontsize: 8
+legend.title_fontsize: 8
+
+mathtext.default: regular
+mathtext.fontset: stix
+# text.usetex: True

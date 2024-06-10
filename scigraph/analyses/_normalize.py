@@ -48,40 +48,37 @@ class Normalize[T: DataTable](Analysis):
     def analyze(self) -> T:
         out = deepcopy(self.table)
 
-        match self._subcolumn_policy:
-            case NormalizeSubColumnPolicy.AVERAGE:
-                values = np.vstack(
-                    [
-                        np.nanmean(ds.y, axis=1)
-                        for _, ds in self.table.datasets_itertuples()
-                    ]
-                ).T
-                n_repeats = round(
-                    self.table._get_normalize_values().shape[1] / values.shape[1]
-                )
-                values = values.repeat(n_repeats, axis=1)
-            case NormalizeSubColumnPolicy.SEPARATE:
-                values = self.table._get_normalize_values()
+        if self._subcolumn_policy == NormalizeSubColumnPolicy.AVERAGE:
+            values = np.vstack(
+                [
+                    np.nanmean(ds.y, axis=1)
+                    for _, ds in self.table.datasets_itertuples()
+                ]
+            ).T
+            n_repeats = round(
+                self.table._get_normalize_values().shape[1] / values.shape[1]
+            )
+            values = values.repeat(n_repeats, axis=1)
+        else:  # SEPARATE
+            values = self.table._get_normalize_values()
 
-        match self._zero_policy:
-            case NormalizeZeroPolicy.MIN:
-                zero = np.nanmin(values, axis=0)
-            case NormalizeZeroPolicy.FIRST:
-                zero = values[0]
-            case NormalizeZeroPolicy.VALUE:
-                zero = np.full(values.shape[1], self._zero_value)
+        if self._zero_policy == NormalizeZeroPolicy.MIN:
+            zero = np.nanmin(values, axis=0)
+        elif self._zero_policy == NormalizeZeroPolicy.FIRST:
+            zero = values[0]
+        else:  # VALUE
+            zero = np.full(values.shape[1], self._zero_value)
 
-        match self._one_policy:
-            case NormalizeOnePolicy.MAX:
-                one = np.nanmax(values, axis=0)
-            case NormalizeOnePolicy.LAST:
-                one = values[-1]
-            case NormalizeOnePolicy.SUM:
-                one = np.nansum(values, axis=0)
-            case NormalizeOnePolicy.MEAN:
-                one = np.nanmean(values, axis=0)
-            case NormalizeOnePolicy.VALUE:
-                one = np.full(values.shape[1], self._one_value)
+        if self._one_policy == NormalizeOnePolicy.MAX:
+            one = np.nanmax(values, axis=0)
+        elif self._one_policy == NormalizeOnePolicy.LAST:
+            one = values[-1]
+        elif self._one_policy == NormalizeOnePolicy.SUM:
+            one = np.nansum(values, axis=0)
+        elif self._one_policy == NormalizeOnePolicy.MEAN:
+            one = np.nanmean(values, axis=0)
+        else:  # VALUE
+            one = np.full(values.shape[1], self._one_value)
 
         normalized = (self.table._get_normalize_values() - zero) / (one - zero)
 

@@ -105,7 +105,8 @@ class GroupedTable(DataTable, RowStatsI):
 
     @override
     @classmethod
-    def from_dataframe(cls, df: DataFrame, **_) -> DataTable: ...  # TODO
+    def from_dataframe(cls, df: DataFrame, **_) -> DataTable:
+        raise NotImplementedError  # TODO
 
     ## Graph factories ##
 
