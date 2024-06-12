@@ -115,14 +115,19 @@ SCHEMA: Schema = {
                 "distance_above": Num,
                 "color": String,
                 "linewidth": Num,
-            }
+            },
+        },
+        "ttest1samp": {
+            "draw": {
+                "space_above": Num,
+            },
         },
         "curve_fit": {
             "bands": {
                 "alpha": Num,
                 "linewidth": Num,
                 "linestyle": String,
-            }
+            },
         },
     },
     "layout": {

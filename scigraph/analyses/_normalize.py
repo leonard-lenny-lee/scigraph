@@ -50,10 +50,7 @@ class Normalize[T: DataTable](Analysis):
 
         if self._subcolumn_policy == NormalizeSubColumnPolicy.AVERAGE:
             values = np.vstack(
-                [
-                    np.nanmean(ds.y, axis=1)
-                    for _, ds in self.table.datasets_itertuples()
-                ]
+                [np.nanmean(ds.y, axis=1) for _, ds in self.table.datasets_itertuples()]
             ).T
             n_repeats = round(
                 self.table._get_normalize_values().shape[1] / values.shape[1]

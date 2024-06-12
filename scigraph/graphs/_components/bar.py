@@ -41,12 +41,6 @@ class Bars(GraphComponent, ABC):
                     ax.bar(x[i], y[i], **props)
                 else:  # Horizontal
                     ax.barh(x[i], y[i], **props)
-                # Add patch artist
-                graph._add_legend_artist(id, mpatches.Patch(
-                    facecolor=props["color"],
-                    edgecolor=props["edgecolor"],
-                    linewidth=props["linewidth"],
-                ))
             else:  # Draw top line of bar only
                 props = graph.plot_properties[id]
                 barl_kw = props.barl_kw()
@@ -77,11 +71,14 @@ class Bars(GraphComponent, ABC):
                     props["height"] *= width_adjustment_factor
                     ax.barh(x_, y_, **props)
                 # Add patch artist
-                graph._add_legend_artist(id, mpatches.Patch(
-                    facecolor=props["color"],
-                    edgecolor=props["edgecolor"],
-                    linewidth=props["linewidth"],
-                ))
+                graph._add_legend_artist(
+                    id,
+                    mpatches.Patch(
+                        facecolor=props["color"],
+                        edgecolor=props["edgecolor"],
+                        linewidth=props["linewidth"],
+                    ),
+                )
             else:  # Draw top line of bar only
                 props = graph.plot_properties[id]
                 barl_kw = props.barl_kw()

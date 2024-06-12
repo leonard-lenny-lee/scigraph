@@ -71,6 +71,9 @@
     color = 'k'
     linewidth = 1
 
+    [analyses.ttest1samp.draw]
+    space_above = 0.05
+
   [analyses.curve_fit]
 
     [analyses.curve_fit.bands]
