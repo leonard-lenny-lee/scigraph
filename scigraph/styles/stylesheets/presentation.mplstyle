@@ -9,10 +9,10 @@ figure.constrained_layout.use: True
 figure.constrained_layout.h_pad: 0.1
 figure.constrained_layout.w_pad: 0.1
 
-savefig.dpi: 300
+savefig.dpi: 320
 savefig.bbox: tight
 savefig.pad_inches: 0.05
-savefig.format: png
+savefig.format: svg
 
 xtick.major.size: 3
 xtick.major.width: 1.0
@@ -38,6 +38,7 @@ axes.spines.left: False
 
 axes.grid: True
 axes.grid.axis: y
+grid.alpha: 0.25
 grid.linewidth: 0.5
 axes.axisbelow: True
 

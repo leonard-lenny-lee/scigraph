@@ -52,7 +52,8 @@ class OneSampleTTest(GraphableAnalysis):
             index=ds,
             name=f"Significant ({alpha = :.2})?",
         )
-        self._result = pd.concat([t, df, p, p_summary, significant], axis=1)
+        desc = self.table.descriptive_statistics("mean", "n").analyze().T
+        self._result = pd.concat([desc, t, df, p, p_summary, significant], axis=1)
         return self._result
 
     @override
