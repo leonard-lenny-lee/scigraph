@@ -27,6 +27,7 @@ from scigraph._options import (
     CFBandType,
     CFReplicatePolicy,
     CFComparisonMethod,
+    CFCompareDiff,
 )
 
 if TYPE_CHECKING:
@@ -309,33 +310,18 @@ class CurveFit(GraphableAnalysis, ABC):
         Returns:
             A summary dataframe of the confidence intervals obtained.
         """
-        parameters = []
-        chunksize = round(n_samples / multiprocessing.cpu_count())
-
-        logging.disable(logging.CRITICAL)
-
-        with multiprocessing.pool.ThreadPool() as p:
-            for fvar in p.imap_unordered(
-                self._bootstrap_sample, range(n_samples), chunksize=chunksize
-            ):
-                parameters.append(fvar)
-
-        logging.disable(logging.NOTSET)
-
-        parameters = np.vstack(parameters)
+        parameters = self._bootstrap_curvefit(n_samples)
 
         cl_upper = (1 + self._confidence_level) / 2
         cl_lower = 1 - cl_upper
         ci = np.nanquantile(parameters, [cl_lower, 0.5, cl_upper], axis=0)
 
+        LOG.info(f"{self._confidence_level:.0%} CI, {n_samples} samples")
+
         for (ds, p_name), (lower, median, upper) in zip(
             it.product(self._include, self._params), ci.T
         ):
-            uncertainty = ((upper - median) + (median - lower)) / 2
-            LOG.info(
-                f"{ds} {p_name} = {median:.4g} ± {uncertainty:.4g}"
-                f" ({lower:.4g} to {upper:.4g})"
-            )
+            LOG.info(f"{ds} {p_name} {median:.4g} [{lower:.4g}, {upper:.4g}]")
 
         # Reshape and reformat into DataFrame
         ci = ci.flatten("F").reshape(self._n_included, self._n_params * 3).T
@@ -591,6 +577,63 @@ class CurveFit(GraphableAnalysis, ABC):
         cmp._report(null, alt)
 
         return cmp._result
+
+    def compare_best_fit_parameters_diff_CI(
+        self,
+        dataset_one: str,
+        dataset_two: str,
+        diff: Literal["diff", "abs", "fold"] = "fold",
+        n_samples: int = 1000,
+    ) -> DataFrame:
+        """Estimate confidence intervals of the difference between the best fit
+        parameters of two datasets by subsampling with the bootstrap method.
+
+        Args:
+            dataset_one: The name of the first dataset.
+            dataset_two: The name of the second dataset.
+            diff: How the difference is calculated. If "diff", the values for
+                the second dataset are subtracted from the first. If "abs", the
+                absolute difference is calculated. If "fold", the values for the
+                first dataset are divided by those of the second.
+            n_samples: How many samples for bootstrapping.
+
+        Returns:
+            A summary dataframe of the differences between the best fit
+            parameters of the two datasets and their estimated confidence
+            intervals.
+        """
+        ds1_idx = self._get_dataset_index(dataset_one)
+        ds2_idx = self._get_dataset_index(dataset_two)
+        diff_t = CFCompareDiff.from_str(diff)
+
+        parameters = self._bootstrap_curvefit(n_samples)
+        param_one = parameters[
+            :, ds1_idx * self._n_params : (ds1_idx + 1) * self._n_params
+        ]
+        param_two = parameters[
+            :, ds2_idx * self._n_params : (ds2_idx + 1) * self._n_params
+        ]
+
+        match diff_t:
+            case CFCompareDiff.DIFF:
+                parameters = param_one - param_two
+            case CFCompareDiff.ABS:
+                parameters = np.abs(param_one - param_two)
+            case CFCompareDiff.FOLD:
+                parameters = param_one / param_two
+
+        cl_upper = (1 + self._confidence_level) / 2
+        cl_lower = 1 - cl_upper
+        ci = np.nanquantile(parameters, [cl_lower, 0.5, cl_upper], axis=0)
+
+        LOG.info(
+            f"{diff.upper()} comparison, {self._confidence_level:.0%} CI, {n_samples} samples"
+        )
+
+        for p_name, (lower, median, upper) in zip(self._params, ci.T):
+            LOG.info(f"{p_name} {median:.4g} [{lower:.4g}, {upper:.4g}]")
+
+        return DataFrame(ci.T, Index(self._params), Index(["Lower", "Median", "Upper"]))
 
     @override
     def draw(
@@ -878,6 +921,23 @@ class CurveFit(GraphableAnalysis, ABC):
             out[i] = r.popt
 
         return out.flatten()
+
+    def _bootstrap_curvefit(self, n_samples: int) -> NDArray:
+        parameters = []
+        chunksize = round(n_samples / multiprocessing.cpu_count())
+
+        logging.disable(logging.CRITICAL)
+
+        with multiprocessing.pool.ThreadPool() as p:
+            for fvar in p.imap_unordered(
+                self._bootstrap_sample, range(n_samples), chunksize=chunksize
+            ):
+                parameters.append(fvar)
+
+        logging.disable(logging.NOTSET)
+
+        parameters = np.vstack(parameters)
+        return parameters
 
     def _calculate_bands(
         self,

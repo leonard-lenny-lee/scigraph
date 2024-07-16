@@ -145,6 +145,12 @@ class CFComparisonMethod(Option):
     F               = auto()
 
 
+class CFCompareDiff(Option):
+    DIFF            = auto()
+    ABS             = auto()
+    FOLD            = auto()
+
+
 class NormalizeSubColumnPolicy(Option):
     AVERAGE         = auto()
     SEPARATE        = auto()
