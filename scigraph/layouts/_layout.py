@@ -29,7 +29,7 @@ class Layout(ABC):
         if key is None:
             key = self._get_empty_pos_key()
         if self.get_position(key) is not None:
-            LOG.warn(f"Replaced graph at position {key}.")
+            LOG.warning(f"Replaced graph at position {key}.")
         self.set_position(key, graph)
 
     def add_caption(

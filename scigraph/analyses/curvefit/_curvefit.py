@@ -146,7 +146,7 @@ class CurveFit(GraphableAnalysis, ABC):
         if param_is_bound:
             # Impose this restriction for now as it makes dof calculations more
             # difficult
-            LOG.warn(
+            LOG.warning(
                 "Equality constraint has been ignored as it is already bounded "
                 "to a value. A parameter cannot be bound and constrained "
                 "simultaneously."
@@ -187,7 +187,7 @@ class CurveFit(GraphableAnalysis, ABC):
 
         if constraint_t is CFBoundType.EQUAL and self._is_constrained[idxs[0]]:
             # Impose this restriction it makes dof calculations easier
-            LOG.warn(
+            LOG.warning(
                 "Equality bound has been ignored as it is already "
                 "constrained. A parameter cannot be bound and constrained "
                 "simulataneously."
@@ -277,7 +277,7 @@ class CurveFit(GraphableAnalysis, ABC):
 
         for i, (id, res) in enumerate(self._result.items()):
             if res is None or res.pcov is None:
-                LOG.warn(
+                LOG.warning(
                     f"Covariance could not be estimated for {id}. Try "
                     f"alternative methods to estimate confidence intervals."
                 )
@@ -346,7 +346,7 @@ class CurveFit(GraphableAnalysis, ABC):
 
         if n_failures:
             failure_rate = n_failures / n_samples
-            LOG.warn(
+            LOG.warning(
                 f"Bootstrap minimization failures: {n_failures} / "
                 f"{n_samples} ({failure_rate:.2%})"
             )
@@ -439,7 +439,7 @@ class CurveFit(GraphableAnalysis, ABC):
             if scan(bkps):
                 continue
 
-            LOG.warn(
+            LOG.warning(
                 f"Failed to interpolate {v} in xrange {xlims}. "
                 f"Extending scan range to {ext_lims}."
             )
@@ -448,7 +448,7 @@ class CurveFit(GraphableAnalysis, ABC):
                 continue
 
             # Failed to find roots
-            LOG.warn(f"Failed to interpolate {v} in extended xrange.")
+            LOG.warning(f"Failed to interpolate {v} in extended xrange.")
             out[i] = np.nan
 
         out = out.reshape(y.shape)
@@ -723,7 +723,7 @@ class CurveFit(GraphableAnalysis, ABC):
         and all the NaN values have been trimmed.
         """
         if self.table.n_x_replicates > 1:
-            LOG.warn(
+            LOG.warning(
                 "Curve fit does not currently support multiple X values. "
                 "X values have been averaged."
             )
@@ -771,7 +771,7 @@ class CurveFit(GraphableAnalysis, ABC):
                         self._f, x, y, p0=p0, bounds=bounds, nan_policy="omit"
                     )
             except RuntimeError as e:
-                LOG.warn(f"Curve fit failed for {id}. SciPy error: {e}")
+                LOG.warning(f"Curve fit failed for {id}. SciPy error: {e}")
                 res[id] = None
                 continue
 
@@ -813,8 +813,8 @@ class CurveFit(GraphableAnalysis, ABC):
             )
 
         if not r.success:
-            LOG.warn("Global curve fit failed.")
-            LOG.warn(f"SciPy minimzation error: {r.message}")
+            LOG.warning("Global curve fit failed.")
+            LOG.warning(f"SciPy minimzation error: {r.message}")
 
         if write:
             self._popt[:] = r.x
@@ -948,7 +948,7 @@ class CurveFit(GraphableAnalysis, ABC):
         """Use the delta method to calculate confidence bands."""
         r = self._result[dataset_id]
         if r is None or r.pcov is None:
-            LOG.warn(
+            LOG.warning(
                 f"Bands could not be plot as covariance could not be estimated "
                 f"for {dataset_id}."
             )

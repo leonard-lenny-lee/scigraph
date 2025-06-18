@@ -95,7 +95,7 @@ class DefaultsConfiguration:
                     | InvalidParamType(k, _, _)
                     | InvalidParamValue(k, _, _)
                 ):
-                    LOG.warn(error)
+                    LOG.warning(error)
                     # Remove invalid configuration settings
                     error_count += 1
                     keys = k.split(".")
@@ -105,7 +105,7 @@ class DefaultsConfiguration:
                     del d_[keys[-1]]
 
         if error_count:
-            LOG.warn(f"{error_count} configuration options have been ignored.")
+            LOG.warning(f"{error_count} configuration options have been ignored.")
 
         self._flatten(d, (d_flat := {}), "")
 

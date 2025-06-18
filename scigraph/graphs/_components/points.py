@@ -126,7 +126,7 @@ class IndividualPoints(Points):
         x = graph.table.x_values
         if graph.table.n_x_replicates > 1:
             x = x.mean(axis=1)
-            LOG.warn(
+            LOG.warning(
                 "Multiple X values are incompatible with individual points "
                 "and have been averaged."
             )

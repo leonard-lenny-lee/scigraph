@@ -104,7 +104,7 @@ class ModelComparison(Analysis):
             if model._global_fit:
                 res = model._result[model._GLOBAL_NAME]
                 if res is None:
-                    LOG.warn(
+                    LOG.warning(
                         f"CurveFit failed for {model._GLOBAL_NAME} and "
                         "comparison could not be made."
                     )
@@ -116,7 +116,7 @@ class ModelComparison(Analysis):
 
             for j, (res_k, res) in enumerate(model._result.items()):
                 if res is None:
-                    LOG.warn(
+                    LOG.warning(
                         f"CurveFit failed for {res_k} and has been excluded "
                         "from the comparison. Interpret results with caution."
                     )
