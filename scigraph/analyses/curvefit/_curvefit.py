@@ -713,7 +713,7 @@ class CurveFit(GraphableAnalysis, ABC):
                 continue
 
             def_band_kws = SG_DEFAULTS["analyses.curve_fit.bands"]
-            def_band_kws["color"] = props.color
+            def_band_kws["color"] = props.markeredgecolor
             def_band_kws.update(**band_kws)
             ax.fill_between(x, *y, **def_band_kws)
 

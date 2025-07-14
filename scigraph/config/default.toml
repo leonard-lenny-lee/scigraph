@@ -21,7 +21,8 @@
   markersize = 3
   capsize = 2
   capthickness = 1
-  color = ['#016899', '#00c4d5', '#fd4332', '#ff8872']
+  markeredgecolor = ['#016899', '#00c4d5', '#fd4332', '#ff8872']
+  markerfacecolor = 'none'
   ls = '-'
   marker = ['o', 's', '^', 'x']
 
@@ -31,7 +32,8 @@
   markersize = 3
   capsize = 5
   capthickness = 1
-  color = 'k'
+  markeredgecolor = 'k'
+  markerfacecolor = 'none'
   ls = '-'
   marker = 'o'
   barcolor = ['#016899', 'skyblue', 'steelblue', 'powderblue']
@@ -45,7 +47,8 @@
   markersize = 3
   capsize = 2
   capthickness = 1
-  color = 'k'
+  markeredgecolor = 'k'
+  markerfacecolor = 'none'
   ls = '-'
   marker = ['o', 's', '^', 'x']
   barcolor = ['#016899', 'skyblue', 'steelblue', 'powderblue']

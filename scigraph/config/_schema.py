@@ -63,7 +63,8 @@ SCHEMA: Schema = {
     },
     "graphs": {
         "xy": {
-            "color": VString,
+            "markeredgecolor": VString,
+            "markerfacecolor": VString,
             "ls": VString,
             "marker": VString,
             "linewidth": VNum,
@@ -72,7 +73,8 @@ SCHEMA: Schema = {
             "capthickness": VNum,
         },
         "column": {
-            "color": VString,
+            "markeredgecolor": VString,
+            "markerfacecolor": VString,
             "ls": VString,
             "marker": VString,
             "linewidth": VNum,
@@ -85,7 +87,8 @@ SCHEMA: Schema = {
             "baredgethickness": VNum,
         },
         "grouped": {
-            "color": VString,
+            "markeredgecolor": VString,
+            "markerfacecolor": VString,
             "ls": VString,
             "marker": VString,
             "linewidth": VNum,

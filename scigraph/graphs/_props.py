@@ -9,7 +9,8 @@ class PlotProps:
     markersize: float
     capsize: float
     capthickness: float
-    color: str
+    markeredgecolor: str
+    markerfacecolor: str
     marker: str
     ls: str
 
@@ -22,14 +23,16 @@ class PlotProps:
     def point_kws(self) -> dict:
         return {
             "marker": self.marker,
-            "color": self.color,
+            "markeredgecolor": self.markeredgecolor,
+            "markerfacecolor": self.markerfacecolor,
             "markersize": self.markersize,
             "ls": "",
+            "markerfacecolor": "none",
         }
 
     def line_kws(self) -> dict:
         return {
-            "color": self.color,
+            "color": self.markeredgecolor,
             "ls": self.ls,
             "linewidth": self.linewidth,
             "marker": "",
@@ -37,7 +40,7 @@ class PlotProps:
 
     def errorbar_kw(self) -> dict:
         return {
-            "ecolor": self.color,
+            "ecolor": self.markeredgecolor,
             "elinewidth": self.linewidth,
             "capsize": self.capsize,
             "capthick": self.capthickness,
@@ -65,17 +68,17 @@ class PlotProps:
         return {
             "widths": self.barwidth,
             "boxprops": {
-                "color": self.color,
+                "color": self.markeredgecolor,
                 "linewidth": self.baredgethickness,
                 "linestyle": self.ls,
             },
             "whiskerprops": {
-                "color": self.color,
+                "color": self.markeredgecolor,
                 "linewidth": self.baredgethickness,
             },
             "flierprops": {
                 "marker": self.marker,
-                "color": self.color,
+                "color": self.markeredgecolor,
                 "markersize": self.markersize,
             },
             "medianprops": {

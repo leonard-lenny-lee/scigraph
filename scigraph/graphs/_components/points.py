@@ -211,7 +211,7 @@ class SwarmPoints(Points):
                 ax=ax,
                 **self.kw,
                 marker=props.marker,
-                color=props.color,
+                color=props.markeredgecolor,
                 size=props.markersize,
                 native_scale=True,
             )
@@ -239,7 +239,7 @@ class SwarmPoints(Points):
                 ax=ax,
                 **self.kw,
                 marker=props.marker,
-                color=props.color,
+                color=props.markeredgecolor,
                 size=props.markersize,
                 native_scale=True,
             )
