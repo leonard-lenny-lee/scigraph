@@ -27,7 +27,6 @@ class PlotProps:
             "markerfacecolor": self.markerfacecolor,
             "markersize": self.markersize,
             "ls": "",
-            "markerfacecolor": "none",
         }
 
     def line_kws(self) -> dict:
