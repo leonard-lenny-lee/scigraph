@@ -40,6 +40,8 @@ if TYPE_CHECKING:
     from scigraph.datatables import XYTable
     from scigraph.graphs import XYGraph
 
+BOOTSTRAP_RNG = np.random.default_rng(seed=115117)
+
 
 class CurveFit(GraphableAnalysis, ABC):
 
@@ -744,7 +746,7 @@ class CurveFit(GraphableAnalysis, ABC):
             x_, y_ = x_[not_nan], y_[not_nan]
             if subsample:
                 # Subsample with replacement for bootstrap estimation
-                idx = np.random.choice(len(x_), size=len(x_), replace=True)
+                idx = BOOTSTRAP_RNG.choice(len(x_), size=len(x), replace=True)
                 x_, y_ = x_[idx], y_[idx]
             out.append(x_)
             out.append(y_)
