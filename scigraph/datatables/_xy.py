@@ -256,6 +256,22 @@ class XYTable(DataTable, RowStatsI):
             values, n_x_replicates, n_y_replicates, n_datasets, dataset_names, x_title
         )
 
+    def create_subtable(self, dataset_ids: list[str]) -> XYTable:
+        y_values = np.hstack([self.get_dataset(id).y for id in dataset_ids])
+        values = np.hstack((self.x_values, y_values))
+        return XYTable(
+            values,
+            self.n_x_replicates,
+            self.n_y_replicates,
+            len(dataset_ids),
+            dataset_ids,
+            self.x_title,
+            self.y_title,
+        )
+
+    def split_datasets(self) -> list[XYTable]:
+        return [self.create_subtable([ds_id]) for ds_id in self.dataset_ids]
+
     ## Graph factories ##
 
     def create_xy_graph(self, *args, **kwargs) -> XYGraph:

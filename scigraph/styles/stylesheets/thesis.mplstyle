@@ -1,6 +1,6 @@
 # Matplotlib style
 
-font.family: Roboto
+font.family: Source Sans 3
 font.size: 8
 
 figure.figsize: 3.3, 2.5
