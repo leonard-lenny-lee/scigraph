@@ -29,12 +29,14 @@ if TYPE_CHECKING:
 
 
 class ColumnGraph(Graph[ColumnTable]):
+    """A graph for one-factor :class:`~scigraph.datatables.ColumnTable` data."""
 
     def __init__(
         self,
         table: ColumnTable,
         direction: Literal["vertical", "horizontal"],
     ) -> None:
+        """Create a graph with categorical and continuous axes."""
         super().__init__()
 
         self._direction = ColumnGraphDirection.from_str(direction)
@@ -66,6 +68,7 @@ class ColumnGraph(Graph[ColumnTable]):
         ty: Literal["mean", "geometric mean", "median", "individual", "swarm"],
         **plot_kw,
     ) -> Self:
+        """Add a point component and return this graph for chaining."""
         self._register_component(ty, PointsType, Points, plot_kw)
         return self
 
@@ -74,6 +77,7 @@ class ColumnGraph(Graph[ColumnTable]):
         ty: Literal["sd", "geometric sd", "sem", "ci95", "range"],
         **plot_kw,
     ) -> Self:
+        """Add an error-bar component and return this graph for chaining."""
         self._register_component(ty, ErrorbarType, ErrorBars, plot_kw)
         return self
 
@@ -84,6 +88,7 @@ class ColumnGraph(Graph[ColumnTable]):
         join_nan: bool = False,
         **plot_kw,
     ) -> Self:
+        """Add a connecting-line component and return this graph for chaining."""
         self._register_component(
             ty, ConnectingLineType, ConnectingLine, plot_kw, join_nan=join_nan
         )
@@ -94,6 +99,7 @@ class ColumnGraph(Graph[ColumnTable]):
         ty: Literal["mean", "median", "geometric mean"],
         **plot_kw,
     ) -> Self:
+        """Add a bar component and return this graph for chaining."""
         self._register_component(ty, BarType, Bars, plot_kw)
         return self
 
@@ -102,28 +108,24 @@ class ColumnGraph(Graph[ColumnTable]):
         ty: Literal["mean", "median", "geometric mean"],
         **plot_kw,
     ) -> Self:
+        """Add a line-only bar component and return this graph for chaining."""
         self._register_component(ty, LineType, Bars, plot_kw, line_only=True)
         return self
 
     def add_box_and_whiskers(
         self, whis: float | tuple[float, float] = 1.5, **plot_kw
     ) -> Self:
+        """Add a box-and-whisker component and return this graph for chaining."""
         self._register_component("", None, BoxAndWhiskers, plot_kw, whis=whis)
         return self
 
     @override
     def draw(self, ax: Optional[Axes] = None) -> Axes:
+        """Draw all registered components and analyses onto ``ax``."""
         if ax is None:
             ax = plt.gca()
 
-        for artist in self._components:
-            artist.draw_column(self, ax)
-
-        for analysis, kws in self._linked_analyses:
-            analysis.draw(self, ax, **kws)
-
-        if self.include_legend:
-            self._compose_legend(ax)
+        self._draw_registered(ax, lambda component: component.draw_column(self, ax))
 
         self.xaxis._format_axes(ax)
         self.yaxis._format_axes(ax)
@@ -140,11 +142,12 @@ class ColumnGraph(Graph[ColumnTable]):
         table: XYTable,
         direction: Literal["vertical", "horizontal"],
     ) -> Self:
+        """Convert dataset means from an XY table into a column graph."""
         # Average replicates and remove X
         values = table.row_statistics("dataset", "mean").analyze().iloc[:, 1:]
         col_table = ColumnTable(np.array(values))
         # Copy values
-        col_table.dataset_names = table._dataset_names
+        col_table.dataset_names = table.dataset_ids
         col_table.x_title = table.x_title
         col_table.y_title = table.y_title
         return cls(col_table, direction)

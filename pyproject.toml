@@ -22,3 +22,10 @@ dependencies = [
   "seaborn >= 0.13",
   "prettytable >= 3.10"
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.black]
+target-version = ["py312"]

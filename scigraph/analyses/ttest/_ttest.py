@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from typing import Literal, Optional, TYPE_CHECKING, override
 
 import matplotlib.lines as mlines
+import numpy as np
 import scipy.stats
 
 from scigraph.analyses.abc import GraphableAnalysis
@@ -30,7 +31,7 @@ if TYPE_CHECKING:
 
 
 class TTest(GraphableAnalysis):
-    """Base class for t-tests and other non-parametric tests"""
+    """Base class for two-sample t-tests and non-parametric comparisons."""
 
     def __init__(
         self,
@@ -39,6 +40,7 @@ class TTest(GraphableAnalysis):
         direction: Literal["two sided", "greater", "less"] = "two sided",
         confidence_level: float = 0.95,
     ) -> None:
+        """Configure a comparison between two named column-table datasets."""
         self._table = table
         self._datasets = datasets
         self._direction = TTestDirection.from_str(direction)
@@ -57,6 +59,7 @@ class TTest(GraphableAnalysis):
         *args,
         **kwargs,
     ) -> None:
+        """Draw a bracket and p-value summary above the compared datasets."""
         # Apply defaults
         defaults = SG_DEFAULTS["analyses.ttest.draw"]
         if arm_length is None:
@@ -102,6 +105,7 @@ class TTest(GraphableAnalysis):
     @property
     @override
     def table(self) -> ColumnTable:
+        """Return the column table being compared."""
         return self._table
 
     def _get_ab(self) -> tuple[NDArray, NDArray]:
@@ -119,7 +123,7 @@ class TTest(GraphableAnalysis):
         df: float
 
         p_summary = generate_p_summary(p)
-        signficant = p < self._confidence_level
+        significant = p < 1 - self._confidence_level
         a_mean, b_mean = a.mean(), b.mean()
         mean_difference = a_mean - b_mean
         ci = r.confidence_interval()
@@ -127,7 +131,7 @@ class TTest(GraphableAnalysis):
         return TTestResult(
             p,
             p_summary,
-            signficant,
+            significant,
             self._confidence_level,
             alternative,
             t,
@@ -141,6 +145,7 @@ class TTest(GraphableAnalysis):
     @property
     @override
     def result(self) -> _Result:
+        """Return the typed result for this statistical test."""
         return super().result
 
 
@@ -153,6 +158,8 @@ class _Result(ABC):
 
 @dataclass(frozen=True)
 class TTestResult(_Result):
+    """Result of a two-sample t-test, including its confidence interval."""
+
     p: float
     p_summary: str
     significant: bool
@@ -172,31 +179,39 @@ class TTestResult(_Result):
 
 
 class StudentsTTest(TTest):
+    """Two-sample Student's t-test assuming equal variances."""
 
     @override
     def analyze(self) -> TTestResult:
+        """Run Student's t-test."""
         self._result = self._ttest(scipy.stats.ttest_ind, equal_var=True)
         return self._result
 
 
 class WelchTTest(TTest):
+    """Two-sample Welch's t-test without an equal-variance assumption."""
 
     @override
     def analyze(self) -> TTestResult:
+        """Run Welch's t-test."""
         self._result = self._ttest(scipy.stats.ttest_ind, equal_var=False)
         return self._result
 
 
 class PairedTTest(TTest):
+    """Paired t-test for paired observations in two datasets."""
 
     @override
     def analyze(self) -> TTestResult:
+        """Run a paired t-test."""
         self._result = self._ttest(scipy.stats.ttest_rel)
         return self._result
 
 
 @dataclass(frozen=True)
 class UTestResult(_Result):
+    """Result of a Mann-Whitney U test."""
+
     p: float
     p_summary: str
     significant: bool
@@ -211,9 +226,11 @@ class UTestResult(_Result):
 
 
 class MannWhitneyUTest(TTest):
+    """Mann-Whitney U test for two independent samples."""
 
     @override
     def analyze(self) -> UTestResult:
+        """Run the Mann-Whitney U test."""
         a, b = self._get_ab()
         alternative = self._direction.to_str("-")
         r = scipy.stats.mannwhitneyu(
@@ -221,7 +238,7 @@ class MannWhitneyUTest(TTest):
         )  # type: ignore
 
         p_summary = generate_p_summary(r.pvalue)
-        significant = r.pvalue < self._confidence_level
+        significant = r.pvalue < 1 - self._confidence_level
 
         self._result = UTestResult(
             r.pvalue,
@@ -237,6 +254,8 @@ class MannWhitneyUTest(TTest):
 
 @dataclass(frozen=True)
 class KSTestResult(_Result):
+    """Result of a two-sample Kolmogorov-Smirnov test."""
+
     p: float
     p_summary: str
     significant: bool
@@ -250,14 +269,17 @@ class KSTestResult(_Result):
 
 
 class KolmogorovSmirnovTest(TTest):
+    """Two-sample Kolmogorov-Smirnov test."""
 
     @override
     def analyze(self) -> KSTestResult:
+        """Run the two-sample Kolmogorov-Smirnov test."""
         a, b = self._get_ab()
-        r = scipy.stats.kstest(a, b, nan_policy="omit")  # type: ignore
+        a, b = a[~np.isnan(a)], b[~np.isnan(b)]
+        r = scipy.stats.ks_2samp(a, b)
 
         p_summary = generate_p_summary(r.pvalue)
-        significant = r.pvalue < self._confidence_level
+        significant = r.pvalue < 1 - self._confidence_level
 
         self._result = KSTestResult(
             r.pvalue, p_summary, significant, self._confidence_level, r.statistic
@@ -268,6 +290,8 @@ class KolmogorovSmirnovTest(TTest):
 
 @dataclass(frozen=True)
 class WilcoxonTestResult(_Result):
+    """Result of a Wilcoxon signed-rank test."""
+
     p: float
     p_summary: str
     significant: bool
@@ -282,6 +306,7 @@ class WilcoxonTestResult(_Result):
 
 
 class WilcoxonSignedRankTest(TTest):
+    """Wilcoxon signed-rank test for paired samples."""
 
     def __init__(
         self,
@@ -291,11 +316,13 @@ class WilcoxonSignedRankTest(TTest):
         confidence_level: float = 0.95,
         zero_method: Literal["wilcox", "pratt"] = "wilcox",
     ) -> None:
+        """Configure a paired non-parametric comparison."""
         super().__init__(table, datasets, direction, confidence_level)
         self._zero_method = WilcoxonZeroMethod.from_str(zero_method)
 
     @override
     def analyze(self) -> WilcoxonTestResult:
+        """Run the Wilcoxon signed-rank test."""
         a, b = self._get_ab()
         alternative = self._direction.to_str("-")
 
@@ -304,7 +331,7 @@ class WilcoxonSignedRankTest(TTest):
         )  # type: ignore
 
         p_summary = generate_p_summary(r.pvalue)
-        significant = r.pvalue < self._confidence_level
+        significant = r.pvalue < 1 - self._confidence_level
 
         self._result = WilcoxonTestResult(
             r.pvalue,

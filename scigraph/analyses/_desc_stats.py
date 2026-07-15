@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 
 class DescriptiveStatistics(Analysis):
+    """Calculate named descriptive statistics for a compatible data table."""
 
     AVAILABLE_STATISTICS = SummaryStatistic.to_strs()
 
@@ -24,6 +25,13 @@ class DescriptiveStatistics(Analysis):
         *stats: str,
         subcolumn_policy: Literal["average", "separate", "merge"],
     ) -> None:
+        """Configure a descriptive-statistics analysis.
+
+        Args:
+            table: A table that implements the descriptive-statistics protocol.
+            stats: Statistics to calculate, for example ``"mean"`` or ``"sd"``.
+            subcolumn_policy: How replicate subcolumns are combined.
+        """
         if not isinstance(table, DescStatsI):
             raise TypeError("DataTable not capable of this analysis")
         self._table = table
@@ -32,17 +40,20 @@ class DescriptiveStatistics(Analysis):
         self.add_statistics(*stats)
 
     def add_statistics(self, *stats: str) -> None:
+        """Append statistics to calculate and invalidate any cached result."""
         for stat in stats:
             self._statistics.append(SummaryStatistic.from_str(stat))
+        self._invalidate_result()
 
     @override
     def analyze(self) -> DataFrame:
+        """Calculate the selected statistics using the configured policy."""
         fns = [get_summary_statistic_fn(fn) for fn in self._statistics]
         match self._subcol_policy:
             case Policy.AVERAGE:
                 out = self._table._desc_stats_average(*fns)
             case Policy.SEPARATE:
-                out = self._table._desc_stats_average(*fns)
+                out = self._table._desc_stats_separate(*fns)
             case Policy.MERGE:
                 out = self._table._desc_stats_merge(*fns)
         return out
@@ -50,4 +61,5 @@ class DescriptiveStatistics(Analysis):
     @property
     @override
     def table(self) -> DataTable:
+        """Return the table being summarised."""
         return self._table

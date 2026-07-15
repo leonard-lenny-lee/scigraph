@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 
 
 class OneSampleTTest(GraphableAnalysis):
+    """Test each column-table dataset against one hypothetical mean."""
 
     def __init__(
         self,
@@ -29,6 +30,7 @@ class OneSampleTTest(GraphableAnalysis):
         direction: Literal["two sided", "greater", "less"] = "two sided",
         confidence_level: float = 0.95,
     ) -> None:
+        """Configure a one-sample t-test for all datasets in ``table``."""
         self._table = table
         self._popmean = hypothetical_value
         self._direction = TTestDirection.from_str(direction)
@@ -36,10 +38,11 @@ class OneSampleTTest(GraphableAnalysis):
 
     @override
     def analyze(self) -> pd.DataFrame:
+        """Run one t-test per dataset and return a labelled summary table."""
         res = scipy.stats.ttest_1samp(
             a=self.table.values, popmean=self._popmean, nan_policy="omit"
         )
-        ds = self.table._dataset_names
+        ds = self.table.dataset_ids
         t = pd.Series(res.statistic, index=ds, name="t")  # type: ignore
         df = pd.Series(res.df, index=ds, name="df")  # type: ignore
         p = pd.Series(res.pvalue, index=ds, name=f"P value ({self._direction.to_str()})")  # type: ignore
@@ -66,6 +69,7 @@ class OneSampleTTest(GraphableAnalysis):
         *_,
         **text_kws,
     ) -> None:
+        """Draw p-value summaries above each dataset in a column graph."""
         if space_above is None:
             space_above = SG_DEFAULTS["analyses.ttest1samp.draw.space_above"]
 
@@ -88,4 +92,5 @@ class OneSampleTTest(GraphableAnalysis):
     @property
     @override
     def table(self) -> ColumnTable:
+        """Return the column table being tested."""
         return self._table

@@ -16,6 +16,7 @@ DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.joinpath("default.toml")
 
 
 class DefaultsConfiguration:
+    """Validated, mutable access to the package's nested default settings."""
 
     def __init__(self, d: dict) -> None:
         self._strict_validate(d, SCHEMA)
@@ -31,6 +32,7 @@ class DefaultsConfiguration:
         return self.set(key, val)
 
     def get(self, key: str | None) -> Any:
+        """Return a configured value or nested dictionary for a dotted key."""
         if key is None:
             return deepcopy(self._config)
         keys = key.split(".")
@@ -45,6 +47,7 @@ class DefaultsConfiguration:
         return deepcopy(out)
 
     def query_schema(self, key: str | None) -> Any:
+        """Return schema metadata for a dotted configuration key."""
         if key is None:
             return deepcopy(SCHEMA)
         keys = key.split(".")
@@ -59,6 +62,7 @@ class DefaultsConfiguration:
         return deepcopy(out)
 
     def set(self, key: str, val: Any) -> None:
+        """Validate and set one dotted configuration value."""
         # Validate key and value before attempting to set value
         query_result = self.query_schema(key)
         if not isinstance(query_result, Param):
@@ -75,6 +79,7 @@ class DefaultsConfiguration:
         target[keys[-1]] = val
 
     def load_toml(self, fp: str | Path) -> None:
+        """Load and validate configuration overrides from a TOML file."""
         fp = self._find_file(fp)
         if fp.suffix != ".toml":
             raise ValueError("Must be a TOML file")
@@ -113,6 +118,7 @@ class DefaultsConfiguration:
             self.set(*kv)
 
     def reset(self) -> None:
+        """Restore all settings to the packaged defaults."""
         self._config = self._load_default()._config
 
     def _strict_validate(
@@ -237,17 +243,23 @@ class DefaultsConfiguration:
 
 @dataclass
 class MissingParam:
+    """Schema marker for a required configuration value that is absent."""
+
     param_name: str
 
 
 @dataclass
 class UnknownParam:
+    """Schema marker for an unrecognised configuration value."""
+
     param_name: str
     value: Any
 
 
 @dataclass
 class InvalidParamType:
+    """Schema marker describing a configuration value with the wrong type."""
+
     param_name: str
     expected_type: type | tuple[type]
     provided_type: type
@@ -255,6 +267,8 @@ class InvalidParamType:
 
 @dataclass
 class InvalidParamValue:
+    """Schema marker describing a configuration value outside allowed values."""
+
     param_name: str
     provided_value: Any
     valid_values: set[Any]

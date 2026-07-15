@@ -9,10 +9,12 @@ class Option(Enum):
     """
 
     def to_str(self, ws_char: str = "_") -> str:
+        """Return the member name as a normalised lower-case string."""
         return self.name.replace("_", ws_char).lower()
 
     @classmethod
     def from_str(cls, s: str | Self) -> Self:
+        """Parse a member from a case-insensitive, space-tolerant string."""
         if isinstance(s, cls):
             return s
         if not isinstance(s, str):
@@ -28,6 +30,7 @@ class Option(Enum):
 
     @classmethod
     def to_strs(cls) -> set[str]:
+        """Return all available member names as normalised strings."""
         return set(cls.__members__.keys())
 
 
@@ -35,6 +38,7 @@ class Option(Enum):
 ## Graph Configuration
 
 class ColumnGraphDirection(Option):
+    """Orientation available for column and grouped graphs."""
     HORIZONTAL      = auto()
     VERTICAL        = auto()
 
@@ -42,6 +46,7 @@ class ColumnGraphDirection(Option):
 GroupedGraphDirection = ColumnGraphDirection
 
 class GroupedGraphGrouping(Option):
+    """Arrangement available for grouped graph datasets."""
     INTERLEAVED     = auto()
     SEPARATED       = auto()
     STACKED         = auto()
@@ -50,6 +55,7 @@ class GroupedGraphGrouping(Option):
 ## Graph Components ##
 
 class PointsType(Option):
+    """Summary or individual point representations."""
     MEAN            = auto()
     GEOMETRIC_MEAN  = auto()
     MEDIAN          = auto()
@@ -58,6 +64,7 @@ class PointsType(Option):
 
 
 class ErrorbarType(Option):
+    """Supported error-bar summary statistics."""
     SD              = auto()
     GEOMETRIC_SD    = auto()
     SEM             = auto()
@@ -66,6 +73,7 @@ class ErrorbarType(Option):
 
 
 class ConnectingLineType(Option):
+    """Supported connecting-line summary statistics."""
     MEAN            = auto()
     GEOMETRIC_MEAN  = auto()
     MEDIAN          = auto()
@@ -73,6 +81,7 @@ class ConnectingLineType(Option):
 
 
 class BarType(Option):
+    """Supported bar summary statistics."""
     MEAN            = auto()
     GEOMETRIC_MEAN  = auto()
     MEDIAN          = auto()
@@ -83,17 +92,20 @@ LineType = BarType
 ## Analysis Configuration
 
 class RowStatisticsScope(Option):
+    """Scopes available to row-statistics analyses."""
     ROW             = auto()
     DATASET         = auto()
 
 
 class DescStatsSubColPolicy(Option):
+    """Policies for combining descriptive-statistics subcolumns."""
     AVERAGE         = auto()
     SEPARATE        = auto()
     MERGE           = auto()
 
 
 class SummaryStatistic(Option):
+    """Descriptive statistics available by name throughout the package."""
     MEAN            = auto()
     SD              = auto()
     SEM             = auto()
@@ -114,55 +126,65 @@ class SummaryStatistic(Option):
 
 
 class TTestDirection(Option):
+    """Alternative-hypothesis directions accepted by statistical tests."""
     TWO_SIDED       = auto()
     GREATER         = auto()
     LESS            = auto()
 
 
 class WilcoxonZeroMethod(Option):
+    """Zero-handling policies accepted by the Wilcoxon test."""
     WILCOX          = auto()
     PRATT           = auto()
 
 
 class CFBoundType(Option):
+    """Bound types available for curve-fit parameters."""
     EQUAL           = auto()
     GREATER         = auto()
     LESS            = auto()
 
 
 class CFBandType(Option):
+    """Uncertainty-band types available for curve fits."""
     CONFIDENCE      = auto()
     PREDICTION      = auto()
 
 
 class CFReplicatePolicy(Option):
+    """Policies for treating y replicates in curve fitting."""
     INDIVIDUAL      = auto()
     MEAN            = auto()
 
 
 class CFComparisonMethod(Option):
+    """Model-comparison methods available for curve fits."""
     AIC             = auto()
     F               = auto()
 
 
 class CFCompareDiff(Option):
+    """Ways to express between-dataset parameter differences."""
     DIFF            = auto()
     ABS             = auto()
     FOLD            = auto()
 
 
 class NormalizeSubColumnPolicy(Option):
+    """Policies for combining replicate subcolumns during normalisation."""
     AVERAGE         = auto()
     SEPARATE        = auto()
 
 
 class NormalizeZeroPolicy(Option):
+    """Reference-value policies for the zero point of normalisation."""
     MIN             = auto()
     FIRST           = auto()
     VALUE           = auto()
 
 
 class NormalizeOnePolicy(Option):
+    """Reference-value policies for the one point of normalisation."""
     MAX             = auto()
     LAST            = auto()
     SUM             = auto()
@@ -171,6 +193,7 @@ class NormalizeOnePolicy(Option):
 
 
 class NormalizeResult(Option):
+    """Output scales available for normalisation."""
     PERCENTAGE      = auto()
     FRACTION        = auto()
 

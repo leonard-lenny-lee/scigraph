@@ -14,12 +14,14 @@ if TYPE_CHECKING:
 
 
 class GridLayout(Layout):
+    """Arrange graphs in a fixed rectangular grid."""
 
     def __init__(
         self,
         ncols: int,
         nrows: int,
     ) -> None:
+        """Create an empty grid with ``nrows`` by ``ncols`` positions."""
         super().__init__()
         self._ncols = ncols
         self._nrows = nrows
@@ -29,6 +31,7 @@ class GridLayout(Layout):
 
     @override
     def link_graph(self, graph: Graph, key: tuple[int, int] | None = None) -> None:
+        """Place a graph at ``key`` or in the first available grid position."""
         super().link_graph(graph, key)
 
     @override
@@ -53,6 +56,7 @@ class GridLayout(Layout):
 
     @override
     def get_position(self, key: tuple[int, int]) -> Graph | None:
+        """Return the graph at ``(row, column)`` or ``None`` when empty."""
         row, col = key
         try:
             return self._graphs[row][col]
@@ -61,6 +65,7 @@ class GridLayout(Layout):
 
     @override
     def set_position(self, key: tuple[int, int], graph: Graph) -> None:
+        """Store ``graph`` at ``(row, column)``."""
         row, col = key
         try:
             self._graphs[row][col] = graph
@@ -69,12 +74,14 @@ class GridLayout(Layout):
 
     @override
     def iter_positions(self) -> Iterator[Graph | None]:
+        """Yield grid positions in row-major order, including empty ones."""
         for row in range(self._nrows):
             for col in range(self._ncols):
                 yield self._graphs[row][col]
 
     @override
     def iter_graphs(self) -> Iterator[Graph]:
+        """Yield linked graphs in row-major order."""
         for pos in self.iter_positions():
             if pos is None:
                 continue

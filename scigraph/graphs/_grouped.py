@@ -32,6 +32,7 @@ if TYPE_CHECKING:
 
 
 class GroupedGraph(Graph[GroupedTable]):
+    """A graph for two-factor grouped data with selectable bar arrangement."""
 
     def __init__(
         self,
@@ -39,11 +40,12 @@ class GroupedGraph(Graph[GroupedTable]):
         direction: Literal["vertical", "horizontal"],
         grouping: Literal["interleaved", "separated", "stacked"],
     ) -> None:
+        """Create a grouped graph with categorical and continuous axes."""
         super().__init__()
 
         self._direction = GroupedGraphDirection.from_str(direction)
         self._grouping = GroupedGraphGrouping.from_str(grouping)
-        self._init_axis(table._row_names, table._dataset_names)
+        self._init_axis(list(table.row_names), table.dataset_ids)
         self._link_table(table)
         self._compile_plot_properties()
 
@@ -64,7 +66,7 @@ class GroupedGraph(Graph[GroupedTable]):
     @override
     def _link_table(self, table: GroupedTable) -> None:
         if not isinstance(table, GroupedTable):
-            raise TypeError("Only ColumnTables can be linked to ColumnGraphs.")
+            raise TypeError("Only GroupedTables can be linked to GroupedGraphs.")
 
         self._table = table
         self.categorical_axis.title = table.x_title
@@ -75,6 +77,7 @@ class GroupedGraph(Graph[GroupedTable]):
         ty: Literal["mean", "geometric mean", "median", "individual", "swarm"],
         **plot_kw,
     ) -> Self:
+        """Add a point component and return this graph for chaining."""
         self._register_component(ty, PointsType, Points, plot_kw)
         return self
 
@@ -83,6 +86,7 @@ class GroupedGraph(Graph[GroupedTable]):
         ty: Literal["sd", "geometric sd", "sem", "ci95", "range"],
         **plot_kw,
     ) -> Self:
+        """Add an error-bar component and return this graph for chaining."""
         self._register_component(ty, ErrorbarType, ErrorBars, plot_kw)
         return self
 
@@ -93,6 +97,7 @@ class GroupedGraph(Graph[GroupedTable]):
         join_nan: bool = False,
         **plot_kw,
     ) -> Self:
+        """Add a connecting-line component and return this graph for chaining."""
         self._register_component(
             ty, ConnectingLineType, ConnectingLine, plot_kw, join_nan=join_nan
         )
@@ -103,6 +108,7 @@ class GroupedGraph(Graph[GroupedTable]):
         ty: Literal["mean", "median", "geometric mean"],
         **plot_kw,
     ) -> Self:
+        """Add a bar component and return this graph for chaining."""
         self._register_component(ty, BarType, Bars, plot_kw)
         return self
 
@@ -111,28 +117,24 @@ class GroupedGraph(Graph[GroupedTable]):
         ty: Literal["mean", "median", "geometric mean"],
         **plot_kw,
     ) -> Self:
+        """Add a line-only bar component and return this graph for chaining."""
         self._register_component(ty, LineType, Bars, plot_kw, line_only=True)
         return self
 
     def add_box_and_whiskers(
         self, whis: float | tuple[float, float] = 1.5, **plot_kw
     ) -> Self:
+        """Add a box-and-whisker component and return this graph for chaining."""
         self._register_component("", None, BoxAndWhiskers, plot_kw, whis=whis)
         return self
 
     @override
     def draw(self, ax: Optional[Axes] = None) -> Axes:
+        """Draw all registered components and analyses onto ``ax``."""
         if ax is None:
             ax = plt.gca()
 
-        for artist in self._components:
-            artist.draw_grouped(self, ax)
-
-        for analysis, kws in self._linked_analyses:
-            analysis.draw(self, ax, **kws)
-
-        if self.include_legend:
-            self._compose_legend(ax)
+        self._draw_registered(ax, lambda component: component.draw_grouped(self, ax))
 
         self.xaxis._format_axes(ax)
         self.yaxis._format_axes(ax)

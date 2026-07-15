@@ -45,6 +45,7 @@ BOOTSTRAP_RNG = np.random.default_rng(seed=115117)
 
 
 class CurveFit(GraphableAnalysis, ABC):
+    """Base class for least-squares curve fits to one or more XY datasets."""
 
     _GLOBAL_NAME = "Global (Shared)"
 
@@ -102,16 +103,19 @@ class CurveFit(GraphableAnalysis, ABC):
     @property
     @override
     def table(self) -> XYTable:
+        """Return the XY table containing the observations being fitted."""
         return self._table
 
     @override
     def analyze(self) -> DataFrame:
+        """Fit the model and return its tabular parameter and fit summary."""
         self.fit()
         return self.result
 
     @property
     @override
     def result(self) -> DataFrame:
+        """Return best-fit parameters and goodness-of-fit metrics by dataset."""
         if hasattr(self, "_pretty_result"):
             return self._pretty_result
 
@@ -1397,6 +1401,8 @@ class CurveFit(GraphableAnalysis, ABC):
 
 @dataclass(frozen=True, slots=True)
 class CurveFitResult:
+    """Numeric result for one fitted dataset or a global shared fit."""
+
     popt: NDArray[np.float64]
     pcov: NDArray[np.float64] | None
     dof: int | float

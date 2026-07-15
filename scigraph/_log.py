@@ -3,6 +3,7 @@ import sys
 
 
 def setup_logger() -> logging.Logger:
+    """Create the package logger with a compact stream handler."""
     log = logging.getLogger("SG_LOG")
     log.setLevel(logging.DEBUG)
 

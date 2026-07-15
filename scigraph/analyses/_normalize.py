@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
 
 class Normalize[T: DataTable](Analysis):
+    """Create a normalised copy of a data table without mutating the source."""
 
     def __init__(
         self,
@@ -32,6 +33,11 @@ class Normalize[T: DataTable](Analysis):
         result: Literal["percentage", "fraction"] = "percentage",
         target_result: float = 1.0,
     ) -> None:
+        """Configure a normalisation analysis.
+
+        The zero and one policies choose the reference values used in
+        ``(value - zero) / (one - zero)``.
+        """
         self._table = table
         self._subcolumn_policy = NormalizeSubColumnPolicy.from_str(subcolumn_policy)
         self._zero_policy = NormalizeZeroPolicy.from_str(zero_policy)
@@ -44,10 +50,12 @@ class Normalize[T: DataTable](Analysis):
     @property
     @override
     def table(self) -> T:
+        """Return the source table, which is never modified by this analysis."""
         return self._table
 
     @override
     def analyze(self) -> T:
+        """Return a deep-copied table whose normalisable values are scaled."""
         out = deepcopy(self.table)
 
         if self._subcolumn_policy == NormalizeSubColumnPolicy.AVERAGE:

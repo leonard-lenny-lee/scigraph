@@ -60,6 +60,7 @@ def compare_models(
 
 
 class ModelComparison(Analysis):
+    """Base class for comparing two fitted curve models on the same data."""
 
     def __init__(
         self,
@@ -92,6 +93,7 @@ class ModelComparison(Analysis):
     @property
     @override
     def table(self) -> XYTable:
+        """Return the table shared by the compared curve fits."""
         return self._model_one.table
 
     def _calculate_rss_dof_n(self) -> tuple[NDArray, NDArray, NDArray]:
@@ -137,6 +139,7 @@ class ModelComparison(Analysis):
 
 
 class ExtraSumOfSquaresFTest(ModelComparison):
+    """Compare nested curve models with an extra sum-of-squares F test."""
 
     def __init__(
         self,
@@ -159,10 +162,12 @@ class ExtraSumOfSquaresFTest(ModelComparison):
     @property
     @override
     def table(self) -> XYTable:
+        """Return the table shared by the compared curve fits."""
         return self._model_one.table
 
     @override
     def analyze(self) -> pd.DataFrame:
+        """Calculate F statistics and p-values for each comparable dataset."""
         ss_1, ss_2 = self._rss
         df_1, df_2 = self._dof
 
@@ -214,9 +219,11 @@ class ExtraSumOfSquaresFTest(ModelComparison):
 
 
 class AICComparison(ModelComparison):
+    """Compare curve models using corrected Akaike information criterion."""
 
     @override
     def analyze(self) -> pd.DataFrame:
+        """Calculate AICc differences and relative model weights."""
         rss = self._rss
         n = self._n
         k = n - self._dof + 1
@@ -271,6 +278,8 @@ class AICComparison(ModelComparison):
 
 @dataclass(slots=True)
 class ExtraSumOfSquaresFTestResult:
+    """Numerical results of one extra sum-of-squares F comparison."""
+
     ss_1: float
     df_1: float
     ss_2: float
@@ -281,6 +290,8 @@ class ExtraSumOfSquaresFTestResult:
 
 @dataclass(slots=True)
 class AICComparisonResult:
+    """Numerical results of one AICc model comparison."""
+
     delta_aicc: float
     p1: float
     p2: float

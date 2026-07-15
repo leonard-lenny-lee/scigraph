@@ -1,4 +1,5 @@
 def generate_p_summary(p: float) -> str:
+    """Return Prism-style asterisk notation for a p-value."""
     if p <= 0.0001:
         out = "****"
     elif p <= 0.001:

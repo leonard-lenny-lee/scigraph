@@ -16,22 +16,37 @@ if TYPE_CHECKING:
 
 
 class Analysis[T: DataTable](ABC):
+    """Base class for analyses that operate on a single data table.
+
+    Subclasses implement :meth:`analyze`; :attr:`result` evaluates it lazily
+    and caches the result until the analysis configuration changes.
+    """
 
     @property
     @abstractmethod
-    def table(self) -> T: ...
+    def table(self) -> T:
+        """Return the data table bound to this analysis."""
+        ...
 
     @abstractmethod
-    def analyze(self) -> Any: ...
+    def analyze(self) -> Any:
+        """Run the analysis and return its result."""
+        ...
 
     @property
     def result(self) -> Any:
+        """Return the cached analysis result, computing it on first access."""
         if not hasattr(self, "_result"):
             self._result = self.analyze()
         return self._result
 
+    def _invalidate_result(self) -> None:
+        """Discard a cached result after changing analysis configuration."""
+        self.__dict__.pop("_result", None)
+
 
 class GraphableAnalysis[T: DataTable, G: Graph](Analysis[T], ABC):
+    """An analysis that can annotate or otherwise draw on a graph."""
 
     @abstractmethod
     def draw(
@@ -40,10 +55,13 @@ class GraphableAnalysis[T: DataTable, G: Graph](Analysis[T], ABC):
         ax: Axes,
         *args,
         **kwargs,
-    ) -> None: ...
+    ) -> None:
+        """Draw this analysis onto an axes belonging to ``graph``."""
+        ...
 
 
 class RowStatsI(ABC):
+    """Internal protocol implemented by tables that support row statistics."""
 
     @abstractmethod
     def _row_statistics_by_row(self, *fns: SummaryStatFn) -> DataFrame: ...
@@ -71,6 +89,7 @@ class RowStatsI(ABC):
 
 
 class DescStatsI(ABC):
+    """Internal protocol implemented by tables that support descriptive statistics."""
 
     @abstractmethod
     def _desc_stats_average(self, *fns: SummaryStatFn) -> DataFrame: ...

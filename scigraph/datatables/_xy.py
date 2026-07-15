@@ -115,15 +115,18 @@ class XYTable(DataTable, RowStatsI):
 
     @override
     def as_df(self) -> pd.DataFrame:
+        """Return values with x/dataset and replicate column labels."""
         return pd.DataFrame(self._values, columns=self._columns())
 
     @property
     @override
     def dataset_ids(self) -> list[str]:
+        """Return y-dataset labels in their display order."""
         return self._dataset_names
 
     @override
     def get_dataset(self, name: str) -> DataSet:
+        """Return x values and y replicate columns for ``name``."""
         if name not in self._dataset_index_map:
             raise KeyError(f"{name} is not a dataset name.")
 
@@ -136,34 +139,42 @@ class XYTable(DataTable, RowStatsI):
     @property
     @override
     def values(self) -> NDArray:
+        """Return the complete underlying numeric array."""
         return self._values
 
     @property
     def y_values(self) -> NDArray:
+        """Return the y-value columns as a view of :attr:`values`."""
         return self._values[:, self._n_x_replicates :]
 
     @property
     def x_values(self) -> NDArray:
+        """Return the x-value columns as a view of :attr:`values`."""
         return self._values[:, : self._n_x_replicates]
 
     @property
     def n_x_replicates(self) -> int:
+        """Number of replicate columns used to define x values."""
         return self._n_x_replicates
 
     @property
     def n_y_replicates(self) -> int:
+        """Number of replicate columns per y dataset."""
         return self._n_y_replicates
 
     @property
     def n_datasets(self) -> int:
+        """Number of y datasets."""
         return self._n_datasets
 
     @property
     def dataset_names(self) -> set[str]:
+        """Return the unique y-dataset labels as a set."""
         return set(self._dataset_names)
 
     @dataset_names.setter
     def dataset_names(self, names: list[str]) -> None:
+        """Replace y-dataset labels after validation."""
         self._verify_names(names, self._n_datasets)
         self._dataset_names = names
         self._generate_dataset_index_map()
@@ -208,7 +219,7 @@ class XYTable(DataTable, RowStatsI):
         level indices are assumed to the grouping columns, and each sublevel
         indices are assumed to be replicates of that group.
         """
-        if df.shape[1] < 1:
+        if df.shape[1] < 2:
             raise ValueError("DataFrame must be at least two columns.")
 
         if df.columns.nlevels == 1:
@@ -257,6 +268,7 @@ class XYTable(DataTable, RowStatsI):
         )
 
     def create_subtable(self, dataset_ids: list[str]) -> XYTable:
+        """Return a new table containing x values and selected datasets."""
         y_values = np.hstack([self.get_dataset(id).y for id in dataset_ids])
         values = np.hstack((self.x_values, y_values))
         return XYTable(
@@ -270,6 +282,7 @@ class XYTable(DataTable, RowStatsI):
         )
 
     def split_datasets(self) -> list[XYTable]:
+        """Return one single-dataset table for every dataset in this table."""
         return [self.create_subtable([ds_id]) for ds_id in self.dataset_ids]
 
     ## Graph factories ##

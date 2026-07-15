@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
 
 class Layout(ABC):
+    """Base class for layouts that place and draw multiple graphs."""
 
     def __init__(self) -> None:
         self._captions: list[Caption] = []
@@ -26,6 +27,7 @@ class Layout(ABC):
         graph: Graph,
         key: Any | None,
     ) -> None:
+        """Link a graph to ``key`` or to the first available position."""
         if key is None:
             key = self._get_empty_pos_key()
         if self.get_position(key) is not None:
@@ -35,15 +37,18 @@ class Layout(ABC):
     def add_caption(
         self, position: Literal["above", "right", "below", "left"]
     ) -> Caption:
+        """Create and register a caption positioned around the layout."""
         caption = Caption(position)
         self._captions.append(caption)
         return caption
 
     def add_layout_legend(self, **legend_kw) -> None:
+        """Request one figure-level legend using artists from linked graphs."""
         self._create_layout_legend = True
         self._legend_kw = legend_kw
 
     def draw(self, **fig_kw) -> Figure:
+        """Draw the layout, captions, and optional figure-level legend."""
         fig = self._draw(**fig_kw)
         for caption in self._captions:
             caption.draw(fig)

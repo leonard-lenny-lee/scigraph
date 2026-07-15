@@ -26,12 +26,14 @@ def _build_ss_stack(*ss) -> list[str]:
 
 
 def use(*ss) -> None:
+    """Apply the default stylesheet followed by named or Matplotlib styles."""
     ss_stack = _build_ss_stack(*ss)
     plt.style.use(ss_stack)
 
 
 @contextlib.contextmanager
 def context(*ss, after_reset: bool):
+    """Temporarily apply styles within a ``with`` block."""
     ss_stack = _build_ss_stack(*ss)
     with plt.style.context(ss_stack, after_reset):
         yield

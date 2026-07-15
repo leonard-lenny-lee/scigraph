@@ -4,12 +4,14 @@ from typing import Any, NamedTuple
 
 
 class Param[T](NamedTuple):
+    """Validation rules for one configurable default value."""
 
     ty: type[T] | tuple[type[T], ...]
     variadic: bool = False
     opt: set[T] | None = None
 
     def validate(self, arg: Any) -> bool:
+        """Return whether ``arg`` satisfies this parameter's type and options."""
         return isinstance(arg, self.ty) and (self.opt is None or arg in self.opt)
 
 

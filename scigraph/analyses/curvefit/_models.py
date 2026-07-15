@@ -8,6 +8,7 @@ __all__ = [
     "PiecewiseConstantExponentialDecay",
     "ExponentialGrowth",
     "Gaussian",
+    "LogNormal",
     "Lorentzian",
     "Sinusoid",
     "Logistic3Parameter",
@@ -29,6 +30,7 @@ if TYPE_CHECKING:
 
 
 class Constant(CurveFit):
+    """Fit a constant response, ``c``."""
 
     @override
     @staticmethod
@@ -37,6 +39,7 @@ class Constant(CurveFit):
 
 
 class Linear(CurveFit):
+    """Fit a straight line, ``m * x + c``."""
 
     @override
     @staticmethod
@@ -45,6 +48,7 @@ class Linear(CurveFit):
 
 
 class Polynomial(CurveFit):
+    """Fit a polynomial with coefficients ordered from constant to highest power."""
 
     def __init__(
         self,
@@ -54,6 +58,7 @@ class Polynomial(CurveFit):
         exclude: list[str] | None = None,
         confidence_level: float = 0.95,
     ) -> None:
+        """Create a polynomial fit of the requested non-negative ``order``."""
         self._order = order
         super().__init__(table, include, exclude, confidence_level=confidence_level)
         self._n_params = order + 1
@@ -73,6 +78,7 @@ class Polynomial(CurveFit):
 
 
 class ExponentialDecay(CurveFit):
+    """Fit exponential decay, ``c + (y0 - c) * exp(-k * x)``."""
 
     @override
     @staticmethod
@@ -81,6 +87,7 @@ class ExponentialDecay(CurveFit):
 
 
 class PiecewiseConstantExponentialDecay(CurveFit):
+    """Fit a constant response before ``x0`` and exponential decay afterwards."""
 
     @override
     @staticmethod
@@ -91,6 +98,7 @@ class PiecewiseConstantExponentialDecay(CurveFit):
 
 
 class ExponentialGrowth(CurveFit):
+    """Fit exponential growth, ``y0 * exp(k * x)``."""
 
     @override
     @staticmethod
@@ -99,6 +107,7 @@ class ExponentialGrowth(CurveFit):
 
 
 class Gaussian(CurveFit):
+    """Fit a Gaussian peak with amplitude, centre, and standard deviation."""
 
     @override
     @staticmethod
@@ -107,6 +116,7 @@ class Gaussian(CurveFit):
 
 
 class LogNormal(CurveFit):
+    """Fit a log-normal peak with amplitude, geometric mean, and geometric SD."""
 
     @override
     @staticmethod
@@ -115,6 +125,7 @@ class LogNormal(CurveFit):
 
 
 class Lorentzian(CurveFit):
+    """Fit a Lorentzian peak with amplitude, centre, and half-width."""
 
     @override
     @staticmethod
@@ -123,6 +134,7 @@ class Lorentzian(CurveFit):
 
 
 class Sinusoid(CurveFit):
+    """Fit a sinusoid with amplitude, frequency, phase, and offset."""
 
     @override
     @staticmethod
@@ -131,6 +143,7 @@ class Sinusoid(CurveFit):
 
 
 class Logistic3Parameter(CurveFit):
+    """Fit a three-parameter hyperbolic dose-response curve."""
 
     @override
     @staticmethod
@@ -139,6 +152,7 @@ class Logistic3Parameter(CurveFit):
 
 
 class Logistic4Parameter(CurveFit):
+    """Fit a four-parameter logistic dose-response curve."""
 
     @override
     @staticmethod
@@ -149,6 +163,7 @@ class Logistic4Parameter(CurveFit):
 
 
 class Logistic5Parameter(CurveFit):
+    """Fit an asymmetric five-parameter logistic dose-response curve."""
 
     @override
     @staticmethod

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from itertools import cycle
+from collections.abc import Callable
 from typing import Any, Optional, Self, TYPE_CHECKING
 
 from scigraph.analyses.abc import GraphableAnalysis
@@ -17,6 +18,7 @@ if TYPE_CHECKING:
 
 
 class Graph[T: DataTable](ABC):
+    """Base class for graphs bound to a specific type of data table."""
 
     def __init__(self) -> None:
         self._legend_artists: dict[str, list[Any]] = {}
@@ -31,19 +33,23 @@ class Graph[T: DataTable](ABC):
 
     @property
     def table(self) -> T:
+        """Return the data table rendered by this graph."""
         return self._table
 
     @property
     def title(self) -> str:
+        """Return the graph title, defaulting to the bound table's title."""
         if not hasattr(self, "_title"):
             self._title = self.table.title
         return self._title
 
     @title.setter
     def title(self, val: str) -> None:
+        """Set the graph title without changing the table title."""
         self._title = val
 
     def link_analysis(self, analysis: GraphableAnalysis, **draw_kw) -> Self:
+        """Register a compatible analysis to draw after graph components."""
         if not isinstance(analysis, GraphableAnalysis):
             raise TypeError(f"{type(analysis).__name__} is not graphable.")
 
@@ -54,10 +60,13 @@ class Graph[T: DataTable](ABC):
         return self
 
     @abstractmethod
-    def draw(self, ax: Axes | None) -> Axes: ...
+    def draw(self, ax: Axes | None) -> Axes:
+        """Draw this graph onto ``ax``, creating one when the subclass allows it."""
+        ...
 
     @property
     def plot_properties(self) -> dict[str, PlotProps]:
+        """Return per-dataset plotting properties derived from configuration."""
         if not hasattr(self, "_plot_properties"):
             self._compile_plot_properties()
         return self._plot_properties
@@ -86,6 +95,25 @@ class Graph[T: DataTable](ABC):
 
         return ax.legend(handles, labels)
 
+    def _draw_registered(
+        self,
+        ax: Axes,
+        draw_component: Callable[[GraphComponent], None],
+    ) -> None:
+        """Draw registered components, analyses, and the optional legend.
+
+        Concrete graph types supply only the component-specific draw operation;
+        this shared lifecycle keeps the three graph implementations aligned.
+        """
+        for component in self._components:
+            draw_component(component)
+
+        for analysis, draw_kw in self._linked_analyses:
+            analysis.draw(self, ax, **draw_kw)
+
+        if self.include_legend:
+            self._compose_legend(ax)
+
     def _add_legend_artist(self, group: str, artist: Any) -> None:
         if group not in self._legend_artists:
             self._legend_artists[group] = []
@@ -113,19 +141,28 @@ class Graph[T: DataTable](ABC):
 
 
 class GraphComponent(ABC):
+    """Base class for a reusable visual component of a graph."""
 
     def __init__(self, kw: dict[str, Any]) -> None:
         self.kw = kw
 
     @abstractmethod
-    def draw_xy(self, graph: XYGraph, ax: Axes) -> None: ...
+    def draw_xy(self, graph: XYGraph, ax: Axes) -> None:
+        """Draw this component on an XY graph."""
+        ...
 
     @abstractmethod
-    def draw_column(self, graph: ColumnGraph, ax: Axes) -> None: ...
+    def draw_column(self, graph: ColumnGraph, ax: Axes) -> None:
+        """Draw this component on a column graph."""
+        ...
 
     @abstractmethod
-    def draw_grouped(self, graph: GroupedGraph, ax: Axes) -> None: ...
+    def draw_grouped(self, graph: GroupedGraph, ax: Axes) -> None:
+        """Draw this component on a grouped graph."""
+        ...
 
     @classmethod
     @abstractmethod
-    def from_opt(cls, opt, kw, **kwargs) -> Self: ...
+    def from_opt(cls, opt, kw, **kwargs) -> Self:
+        """Create the concrete component selected by an option value."""
+        ...

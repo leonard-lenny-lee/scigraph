@@ -10,6 +10,7 @@ from pandas import DataFrame
 
 
 class DataTable(ABC):
+    """Base class for validated, labelled numeric data tables."""
 
     _instance_count = 0
 
@@ -85,20 +86,24 @@ class DataTable(ABC):
 
     @property
     def nrows(self) -> int:
+        """Number of rows in the underlying values array."""
         return self.values.shape[0]
 
     @property
     def ncols(self) -> int:
+        """Number of columns in the underlying values array."""
         return self.values.shape[1]
 
     @property
     def title(self) -> str:
+        """A lazily generated title suitable for graph titles and labels."""
         if not hasattr(self, "_title"):
             self._title = self._default_title()
         return self._title
 
     @title.setter
     def title(self, val: str) -> None:
+        """Set the display title for this table."""
         self._title = val
 
     def _get_normalize_values(self) -> NDArray:
@@ -155,5 +160,7 @@ class DataTable(ABC):
 
 
 class DataSet(NamedTuple):
+    """The x and y values that define one named dataset."""
+
     x: NDArray | None
     y: NDArray
