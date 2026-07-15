@@ -3,6 +3,7 @@ from __future__ import annotations
 __all__ = ["CurveFit"]
 
 from abc import ABC, abstractmethod
+from copy import copy
 from dataclasses import dataclass
 from functools import cached_property
 import inspect
@@ -87,6 +88,10 @@ class CurveFit(GraphableAnalysis, ABC):
         self._bounds = self._lower_bounds, self._upper_bounds
         self._is_bound = self._default_is_bound()
         self._is_constrained = np.full(self._n_params, False)
+        # A profile fit can need to stay global even after a shared parameter
+        # is fixed in every dataset (at which point it is no longer an
+        # equality constraint).
+        self._force_global_fit = False
         self._popt = np.full(self._total_n_params, np.nan)
         self._fitted = False
 
@@ -297,6 +302,131 @@ class CurveFit(GraphableAnalysis, ABC):
         )
         index = MultiIndex.from_product((categories, self._params))
         return DataFrame(values.T, index, Index(self._result.keys()))
+
+    def profile_likelihood_CI(self, max_steps: int = 50) -> DataFrame:
+        """Calculate profile-likelihood confidence intervals for parameters.
+
+        Each candidate parameter value is held fixed while the remaining
+        parameters are re-fitted. The restricted and unrestricted fits are
+        compared with the extra sum-of-squares F test. The confidence limit is
+        the value where its p-value equals ``1 - confidence_level``. This is
+        the per-parameter, potentially asymmetric procedure used by GraphPad
+        Prism for Gaussian-residual nonlinear regression.
+
+        Parameters already fixed with :meth:`add_bound` have no estimable
+        interval and are returned as ``NaN``. A missing limit likewise means
+        that the F-test threshold could not be reached before a fitting bound
+        or the search limit was reached.
+
+        Args:
+            max_steps: Maximum number of outward searches used to bracket each
+                confidence limit before it is refined numerically.
+
+        Returns:
+            The lower and upper confidence limits in the same layout as
+            :meth:`approximate_CI`.
+        """
+        self._check_fitted()
+        if max_steps < 1:
+            raise ValueError("max_steps must be at least 1.")
+
+        alpha = 1 - self._confidence_level
+        if not 0 < alpha < 1:
+            raise ValueError("confidence_level must be strictly between 0 and 1.")
+
+        keys = list(self._result)
+        lower_ci = np.full((len(keys), self._n_params), np.nan)
+        upper_ci = np.full((len(keys), self._n_params), np.nan)
+        xy = self._prepare_xy()
+
+        for column, dataset in enumerate(keys):
+            # The global result represents only parameters shared between all
+            # datasets. Intervals for an unshared parameter are dataset-local.
+            if dataset == self._GLOBAL_NAME:
+                dataset_index = 0
+            else:
+                dataset_index = self._get_include_index(dataset)
+
+            for param_index, param in enumerate(self._params):
+                shared = self._global_fit and self._is_constrained[param_index]
+                if dataset == self._GLOBAL_NAME and not shared:
+                    continue
+
+                full_index = dataset_index * self._n_params + param_index
+                if self._is_bound[full_index]:
+                    continue
+
+                if self._global_fit:
+                    full_result = self._result[self._GLOBAL_NAME]
+                else:
+                    full_result = self._result[dataset]
+                if full_result is None or not self._valid_profile_result(full_result):
+                    LOG.warning(
+                        "Profile likelihood CI could not be calculated for %s %s: "
+                        "the unrestricted fit has invalid RSS or degrees of freedom.",
+                        dataset,
+                        param,
+                    )
+                    continue
+
+                if shared:
+                    fitted_indices = np.arange(
+                        param_index, self._total_n_params, self._n_params
+                    )
+                else:
+                    fitted_indices = np.array([full_index])
+
+                lower = np.max(self._lower_bounds[fitted_indices])
+                upper = np.min(self._upper_bounds[fitted_indices])
+                best = self._popt[full_index]
+                if not lower < best < upper:
+                    LOG.warning(
+                        "Profile likelihood CI could not be calculated for %s %s: "
+                        "the best fit lies on a parameter bound.",
+                        dataset,
+                        param,
+                    )
+                    continue
+
+                initial_step = self._profile_initial_step(
+                    best, full_result, param_index
+                )
+                lower_ci[column, param_index] = self._profile_limit(
+                    xy,
+                    full_result,
+                    fitted_indices,
+                    best,
+                    lower,
+                    upper,
+                    initial_step,
+                    direction=-1,
+                    alpha=alpha,
+                    max_steps=max_steps,
+                    keep_global=shared,
+                    label=f"{dataset} {param}",
+                )
+                upper_ci[column, param_index] = self._profile_limit(
+                    xy,
+                    full_result,
+                    fitted_indices,
+                    best,
+                    lower,
+                    upper,
+                    initial_step,
+                    direction=1,
+                    alpha=alpha,
+                    max_steps=max_steps,
+                    keep_global=shared,
+                    label=f"{dataset} {param}",
+                )
+
+        values = np.hstack((lower_ci, upper_ci))
+        categories = (
+            f"Lower CI {self._confidence_level:.0%}",
+            f"Upper CI {self._confidence_level:.0%}",
+        )
+        index = MultiIndex.from_product((categories, self._params))
+        return DataFrame(values.T, index, Index(keys))
 
     def bootstrap_CI(self, n_samples: int = 1000) -> DataFrame:
         """Estimate confidence intervals by subsampling with the bootstrap
@@ -719,6 +849,162 @@ class CurveFit(GraphableAnalysis, ABC):
             def_band_kws.update(**band_kws)
             ax.fill_between(x, *y, **def_band_kws)
 
+    @staticmethod
+    def _valid_profile_result(result: CurveFitResult) -> bool:
+        """Whether a fit can be used as the denominator of an F statistic."""
+        return (
+            np.isfinite(result.rss)
+            and result.rss > 0
+            and np.isfinite(result.dof)
+            and result.dof > 0
+        )
+
+    def _profile_initial_step(
+        self, best: float, result: CurveFitResult, param_index: int
+    ) -> float:
+        """Choose a sensible first displacement for a profile search."""
+        if result.pcov is not None:
+            se = np.sqrt(result.pcov[param_index, param_index])
+            if np.isfinite(se) and se > 0:
+                return float(se)
+
+        # Global fits do not currently estimate a covariance matrix. This is
+        # only a starting distance: the bracketing loop expands it as needed.
+        residual_scale = np.sqrt(result.rss / result.dof)
+        scale = max(abs(best), residual_scale, np.finfo(float).eps)
+        return float(scale * 0.1)
+
+    def _profile_limit(
+        self,
+        xy: tuple[NDArray, ...],
+        full_result: CurveFitResult,
+        fitted_indices: NDArray[np.int_],
+        best: float,
+        lower_bound: float,
+        upper_bound: float,
+        initial_step: float,
+        *,
+        direction: Literal[-1, 1],
+        alpha: float,
+        max_steps: int,
+        keep_global: bool,
+        label: str,
+    ) -> float:
+        """Find one profile-likelihood limit by bracketing an F-test root."""
+        boundary = lower_bound if direction < 0 else upper_bound
+        step = initial_step
+        inside = best
+        cache: dict[float, float] = {}
+
+        def p_value(value: float) -> float:
+            if value not in cache:
+                cache[value] = self._profile_p_value(
+                    xy, full_result, fitted_indices, value, keep_global
+                )
+            return cache[value]
+
+        for _ in range(max_steps):
+            candidate = (
+                max(boundary, best - step)
+                if direction < 0
+                else min(boundary, best + step)
+            )
+            p = p_value(candidate)
+            if not np.isfinite(p):
+                LOG.warning(
+                    "Profile likelihood CI could not be calculated for %s: "
+                    "a restricted fit failed.",
+                    label,
+                )
+                return np.nan
+
+            if p <= alpha:
+                try:
+                    solution = root_scalar(
+                        lambda value: p_value(value) - alpha,
+                        bracket=tuple(sorted((inside, candidate))),
+                        method="brentq",
+                        xtol=max(abs(best) * 1e-10, 1e-12),
+                    )
+                except (ValueError, RuntimeError):
+                    LOG.warning(
+                        "Profile likelihood CI could not be refined for %s.", label
+                    )
+                    return np.nan
+                return solution.root if solution.converged else np.nan
+
+            if candidate == boundary:
+                LOG.warning(
+                    "Profile likelihood CI could not find the %s limit for %s "
+                    "before reaching a parameter bound.",
+                    "lower" if direction < 0 else "upper",
+                    label,
+                )
+                return np.nan
+
+            inside = candidate
+            step *= 2
+
+        LOG.warning(
+            "Profile likelihood CI could not bracket the %s limit for %s in %d steps.",
+            "lower" if direction < 0 else "upper",
+            label,
+            max_steps,
+        )
+        return np.nan
+
+    def _profile_p_value(
+        self,
+        xy: tuple[NDArray, ...],
+        full_result: CurveFitResult,
+        fitted_indices: NDArray[np.int_],
+        value: float,
+        keep_global: bool,
+    ) -> float:
+        """Refit at a fixed value and return its extra-SS F-test p-value."""
+        model = self._clone(self)
+        model._p0 = self._popt.copy()
+
+        if keep_global:
+            # Fixing a shared parameter removes its equality constraint, but
+            # the restricted model must still optimise all datasets together.
+            model._force_global_fit = True
+            model._is_constrained[fitted_indices[0] % self._n_params] = False
+
+        # scipy.optimize.curve_fit requires a non-zero interval for a fixed
+        # parameter. Keep this interval at floating-point precision so the
+        # restricted fit is, for practical purposes, fixed exactly at value.
+        epsilon = max(abs(value), 1.0) * np.finfo(float).eps * 8
+        model._lower_bounds[fitted_indices] = value - epsilon / 2
+        model._upper_bounds[fitted_indices] = value + epsilon / 2
+        model._p0[fitted_indices] = value
+        model._is_bound[fitted_indices] = True
+        model._bounds = model._lower_bounds, model._upper_bounds
+
+        restricted = model._gfit(xy) if model._global_fit else model._fit(xy)
+        key = (
+            self._GLOBAL_NAME
+            if self._global_fit
+            else self._include[fitted_indices[0] // self._n_params]
+        )
+        restricted_result = restricted[key]
+        if restricted_result is None or not self._valid_profile_result(
+            restricted_result
+        ):
+            return np.nan
+
+        numerator_df = restricted_result.dof - full_result.dof
+        if numerator_df <= 0:
+            return np.nan
+        f_stat = (
+            (restricted_result.rss - full_result.rss)
+            / numerator_df
+            / (full_result.rss / full_result.dof)
+        )
+        # Numerical minimization can make a restricted RSS infinitesimally
+        # smaller than the unrestricted RSS; an F statistic cannot be negative.
+        return float(scipy.stats.f.sf(max(f_stat, 0.0), numerator_df, full_result.dof))
+
     def _prepare_xy(self, subsample: bool = False) -> tuple[NDArray, ...]:
         """Organize the values into tuple of x and y arrays, arranged as:
         x1, y1, x2, y2, ... xn, yn; where n is the number of included datasets,
@@ -1045,7 +1331,7 @@ class CurveFit(GraphableAnalysis, ABC):
 
     @property
     def _global_fit(self) -> bool:
-        return np.any(self._is_constrained)  # type: ignore
+        return self._force_global_fit or np.any(self._is_constrained)  # type: ignore
 
     def _init_include_list(
         self,
@@ -1089,14 +1375,23 @@ class CurveFit(GraphableAnalysis, ABC):
     @classmethod
     def _clone(cls, x: CurveFit) -> CurveFit:
         """Use custom copy method to selectively deepcopy some attributes."""
-        out = cls(x.table, x._include, confidence_level=x._confidence_level)
+        # Calling ``cls(...)`` does not work for model classes with additional
+        # constructor arguments, such as Polynomial(order=...). A shallow copy
+        # is sufficient because the table and model definition are immutable
+        # inputs to a fit; copy the mutable optimisation state below.
+        out = copy(x)
         out._p0 = x._p0.copy()
+        out._popt = x._popt.copy()
         out._lower_bounds = x._lower_bounds.copy()
         out._upper_bounds = x._upper_bounds.copy()
         out._bounds = out._lower_bounds, out._upper_bounds
         out._is_bound = x._is_bound.copy()
         out._is_constrained = x._is_constrained.copy()
         out._replicate_policy = x._replicate_policy
+        out._force_global_fit = x._force_global_fit
+        out._fitted = False
+        out.__dict__.pop("_pretty_result", None)
+        out.__dict__.pop("_result", None)
         return out
 
 
