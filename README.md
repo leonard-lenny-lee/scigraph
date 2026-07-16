@@ -26,12 +26,20 @@ fit = Logistic4Parameter(table)
 fit.add_initial_value("top", 100)
 fit.fit()
 
-parameters = fit.result
-confidence_intervals = fit.profile_likelihood_CI()
+results = fit.result  # Best fits, profile-likelihood CIs, and fit statistics
 
 graph = table.create_xy_graph()
 graph.add_points("mean").add_errorbars("sem")
 graph.link_analysis(fit)
+```
+
+Curve-fit result tables use profile-likelihood confidence intervals by default.
+Choose a faster approximation, bootstrap resampling, or omit intervals when
+constructing the fit:
+
+```python
+fit = Logistic4Parameter(table, confidence_interval_method="approximate")
+# Also available: "bootstrap" (with bootstrap_samples=...) and "none".
 ```
 
 Use the data-table factories for standard analyses:

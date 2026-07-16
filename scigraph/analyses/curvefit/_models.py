@@ -17,7 +17,7 @@ __all__ = [
 ]
 
 from functools import cached_property
-from typing import override, TYPE_CHECKING
+from typing import Literal, override, TYPE_CHECKING
 
 import numpy as np
 
@@ -57,10 +57,21 @@ class Polynomial(CurveFit):
         include: list[str] | None = None,
         exclude: list[str] | None = None,
         confidence_level: float = 0.95,
+        confidence_interval_method: Literal[
+            "profile likelihood", "approximate", "bootstrap", "none"
+        ] = "profile likelihood",
+        bootstrap_samples: int = 1000,
     ) -> None:
         """Create a polynomial fit of the requested non-negative ``order``."""
         self._order = order
-        super().__init__(table, include, exclude, confidence_level=confidence_level)
+        super().__init__(
+            table,
+            include,
+            exclude,
+            confidence_level=confidence_level,
+            confidence_interval_method=confidence_interval_method,
+            bootstrap_samples=bootstrap_samples,
+        )
         self._n_params = order + 1
 
     @cached_property

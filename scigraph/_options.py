@@ -157,6 +157,14 @@ class CFReplicatePolicy(Option):
     MEAN            = auto()
 
 
+class CFConfidenceIntervalMethod(Option):
+    """Methods available for parameter confidence-interval estimation."""
+    PROFILE_LIKELIHOOD = auto()
+    APPROXIMATE        = auto()
+    BOOTSTRAP          = auto()
+    NONE               = auto()
+
+
 class CFComparisonMethod(Option):
     """Model-comparison methods available for curve fits."""
     AIC             = auto()

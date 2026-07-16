@@ -27,6 +27,7 @@ from scigraph._options import (
     CFBoundType,
     CFBandType,
     CFReplicatePolicy,
+    CFConfidenceIntervalMethod,
     CFComparisonMethod,
     CFCompareDiff,
 )
@@ -57,6 +58,10 @@ class CurveFit(GraphableAnalysis, ABC):
         *,
         replicate_policy: Literal["individual", "mean"] = "individual",
         confidence_level: float = 0.95,
+        confidence_interval_method: Literal[
+            "profile likelihood", "approximate", "bootstrap", "none"
+        ] = "profile likelihood",
+        bootstrap_samples: int = 1000,
     ) -> None:
         """Initialize a curve fitting instance.
 
@@ -75,12 +80,25 @@ class CurveFit(GraphableAnalysis, ABC):
                 replicates is considered. "mean" is not recommended.
             confidence_level: The confidence level all confidence interval
                 calculations and analysis is conducted at.
+            confidence_interval_method: The method used to estimate parameter
+                confidence intervals included in :attr:`result`. Profile
+                likelihood is the default; use ``"approximate"`` for
+                covariance-matrix intervals, ``"bootstrap"`` for resampling,
+                or ``"none"`` to omit intervals from the result table.
+            bootstrap_samples: Number of resamples when
+                ``confidence_interval_method="bootstrap"``.
         """
         self._table = table
         self._init_include_list(include, exclude)
         self._n_params = len(self._params)
         self._replicate_policy = CFReplicatePolicy.from_str(replicate_policy)
         self._confidence_level = confidence_level
+        self._confidence_interval_method = CFConfidenceIntervalMethod.from_str(
+            confidence_interval_method
+        )
+        if bootstrap_samples < 1:
+            raise ValueError("bootstrap_samples must be at least 1.")
+        self._bootstrap_samples = bootstrap_samples
 
         # Fit attributes
         self._p0 = self._default_p0()
@@ -115,24 +133,48 @@ class CurveFit(GraphableAnalysis, ABC):
     @property
     @override
     def result(self) -> DataFrame:
-        """Return best-fit parameters and goodness-of-fit metrics by dataset."""
+        """Return parameters, confidence intervals, and goodness-of-fit metrics.
+
+        Confidence intervals are estimated using the method selected at
+        construction time. The default profile-likelihood calculation refits
+        the model repeatedly and can therefore take substantially longer than
+        the approximate covariance-based method.
+        """
         if hasattr(self, "_pretty_result"):
             return self._pretty_result
 
         self._check_fitted()
+        ci = self._result_confidence_intervals()
         data = []
-        for r in self._result.values():
+        for column, r in enumerate(self._result.values()):
             if r is not None:
                 gof_metrics = np.array([r.dof, r.r2, r.rss, r.sy_x, r.n])
-                d = np.hstack([r.popt, gof_metrics])
+                values = [r.popt]
+                if ci is not None:
+                    values.extend(
+                        [
+                            ci[0][column],
+                            ci[1][column],
+                        ]
+                    )
+                d = np.hstack([*values, gof_metrics])
                 data.append(d)
             else:
-                data.append(np.full(self._n_params + 5, np.nan))
+                n_rows = self._n_params + 5
+                if ci is not None:
+                    n_rows += self._n_params * 2
+                data.append(np.full(n_rows, np.nan))
 
         data = np.vstack(data)
         index = [
             ("Best Fit Params", param) for param in self._params
         ]  # type: list[tuple[str, str]]
+        if ci is not None:
+            index.extend(
+                (label, param)
+                for label in self._confidence_interval_labels
+                for param in self._params
+            )
         index.extend(
             [("Goodness of Fit", stat) for stat in ["dof", "r2", "rss", "sy_x", "n"]]
         )
@@ -261,6 +303,8 @@ class CurveFit(GraphableAnalysis, ABC):
             A dictionary of the optimization results, with each entry
             representing the results of each dataset.
         """
+        self.__dict__.pop("_pretty_result", None)
+        self.__dict__.pop("_result_confidence_intervals_cache", None)
         xy = self._prepare_xy()
 
         if self._global_fit:
@@ -306,6 +350,48 @@ class CurveFit(GraphableAnalysis, ABC):
         )
         index = MultiIndex.from_product((categories, self._params))
         return DataFrame(values.T, index, Index(self._result.keys()))
+
+    @property
+    def _confidence_interval_labels(self) -> tuple[str, str]:
+        """Labels shared by result-table and standalone CI output."""
+        return (
+            f"Lower CI {self._confidence_level:.0%}",
+            f"Upper CI {self._confidence_level:.0%}",
+        )
+
+    def _result_confidence_intervals(
+        self,
+    ) -> tuple[NDArray, NDArray] | None:
+        """Calculate and cache interval arrays used by :attr:`result`."""
+        if self._confidence_interval_method is CFConfidenceIntervalMethod.NONE:
+            return None
+        if hasattr(self, "_result_confidence_intervals_cache"):
+            return self._result_confidence_intervals_cache
+
+        match self._confidence_interval_method:
+            case CFConfidenceIntervalMethod.PROFILE_LIKELIHOOD:
+                ci = self.profile_likelihood_CI()
+            case CFConfidenceIntervalMethod.APPROXIMATE:
+                ci = self.approximate_CI()
+            case CFConfidenceIntervalMethod.BOOTSTRAP:
+                bootstrap_ci = self.bootstrap_CI(self._bootstrap_samples)
+                lower, upper = bootstrap_ci.xs("Lower", level=0), bootstrap_ci.xs(
+                    "Upper", level=0
+                )
+                self._result_confidence_intervals_cache = (
+                    lower.T.to_numpy(),
+                    upper.T.to_numpy(),
+                )
+                return self._result_confidence_intervals_cache
+            case _:
+                raise AssertionError("Unsupported confidence interval method.")
+
+        lower, upper = (
+            ci.xs(label, level=0).T.to_numpy()
+            for label in self._confidence_interval_labels
+        )
+        self._result_confidence_intervals_cache = lower, upper
+        return self._result_confidence_intervals_cache
 
     def profile_likelihood_CI(self, max_steps: int = 50) -> DataFrame:
         """Calculate profile-likelihood confidence intervals for parameters.
@@ -425,11 +511,9 @@ class CurveFit(GraphableAnalysis, ABC):
                 )
 
         values = np.hstack((lower_ci, upper_ci))
-        categories = (
-            f"Lower CI {self._confidence_level:.0%}",
-            f"Upper CI {self._confidence_level:.0%}",
+        index = MultiIndex.from_product(
+            (self._confidence_interval_labels, self._params)
         )
-        index = MultiIndex.from_product((categories, self._params))
         return DataFrame(values.T, index, Index(keys))
 
     def bootstrap_CI(self, n_samples: int = 1000) -> DataFrame:
@@ -467,7 +551,7 @@ class CurveFit(GraphableAnalysis, ABC):
             + list(range(2, len(ci), 3))
         )
         ci = ci[idx]
-        columns = self.table.dataset_ids.copy()
+        columns = self._include.copy()
 
         if self._global_fit:
             shared = ci.T[0].copy()

@@ -17,10 +17,10 @@
 
   [graphs.xy]
   
-  linewidth = 0.75
+  linewidth = 0.5
   markersize = 3
   capsize = 2
-  capthickness = 0.75
+  capthickness = 0.5
   markeredgecolor = ['#016899', '#00c4d5', '#fd4332', '#ff8872']
   markerfacecolor = ['#016899', '#00c4d5', '#fd4332', '#ff8872']
   ls = '-'
