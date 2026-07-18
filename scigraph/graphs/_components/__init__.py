@@ -3,4 +3,5 @@ from .errorbars import ErrorBars
 from .connecting_lines import ConnectingLine
 from .bar import Bars
 from .box import BoxAndWhiskers
+from .violin import ViolinPlot
 from .axis import ContinuousAxis, CategoricalAxis
