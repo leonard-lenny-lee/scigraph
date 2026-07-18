@@ -56,6 +56,7 @@ class TTest(GraphableAnalysis):
         distance_above: Optional[float] = None,
         color: Optional[str] = None,
         linewidth: Optional[float] = None,
+        translate: tuple[float, float] = (0, 0),
         *args,
         **kwargs,
     ) -> None:
@@ -77,11 +78,19 @@ class TTest(GraphableAnalysis):
         x0, x1 = [graph.table.dataset_ids.index(d) for d in self._datasets]
         x2 = (x0 + x1) / 2
         a, b = self._get_ab()
-        t_max = graph.table.values.max()
-        y_max = max(a.max(), b.max())
+        t_max = np.nanmax(graph.table.values)
+        y_max = max(np.nanmax(a), np.nanmax(b))
         y0 = y_max + distance_below * t_max
         y1 = y0 + arm_length * t_max
         y2 = y1 + distance_above * t_max
+
+        x_translate, y_translate = translate
+        x0 += x_translate
+        x1 += x_translate
+        x2 += x_translate
+        y0 += y_translate
+        y1 += y_translate
+        y2 += y_translate
 
         x_a, y_a = [x0, x1], [y1, y1]
         x_b, y_b = [x0, x0], [y0, y1]
@@ -93,6 +102,7 @@ class TTest(GraphableAnalysis):
             text_kws = {"va": "center", "ha": "left", "rotation": -90}
         else:
             text_kws = {"va": "bottom", "ha": "center"}
+
 
         # Main line
         ax.add_line(mlines.Line2D(x_a, y_a, **line_kws))

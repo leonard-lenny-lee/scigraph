@@ -13,6 +13,7 @@ from scigraph.graphs._components import (
     ConnectingLine,
     Bars,
     BoxAndWhiskers,
+    ViolinPlot,
 )
 from scigraph.graphs._components.axis import ContinuousAxis, CategoricalAxis
 from scigraph._options import (
@@ -117,6 +118,41 @@ class ColumnGraph(Graph[ColumnTable]):
     ) -> Self:
         """Add a box-and-whisker component and return this graph for chaining."""
         self._register_component("", None, BoxAndWhiskers, plot_kw, whis=whis)
+        return self
+
+    def add_violins(
+        self,
+        *,
+        width: float | None = None,
+        showmeans: bool = False,
+        showmedians: bool = True,
+        showextrema: bool = True,
+        points: int = 100,
+        bw_method: str | float | None = None,
+        body_kws: dict | None = None,
+        line_kws: dict | None = None,
+        **violin_kw,
+    ) -> Self:
+        """Add one kernel-density violin for each dataset.
+
+        Keyword arguments not listed here are forwarded to Matplotlib's
+        ``Axes.violinplot`` method. ``body_kws`` and ``line_kws`` style the
+        filled densities and their summary lines, respectively.
+        """
+        self._register_component(
+            "",
+            None,
+            ViolinPlot,
+            violin_kw,
+            width=width,
+            showmeans=showmeans,
+            showmedians=showmedians,
+            showextrema=showextrema,
+            points=points,
+            bw_method=bw_method,
+            body_kws=body_kws,
+            line_kws=line_kws,
+        )
         return self
 
     @override

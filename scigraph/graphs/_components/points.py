@@ -203,6 +203,12 @@ class SwarmPoints(Points):
         for i, id in enumerate(graph.table.dataset_ids):
             props = graph.plot_properties[id]
             s = slice(i * graph.table.nrows, (i + 1) * graph.table.nrows)
+            if 'marker' not in self.kw:
+                self.kw['marker'] = props.marker
+            if 'color' not in self.kw:
+                self.kw['color'] = props.markeredgecolor
+            if 'size' not in self.kw:
+                self.kw['size'] = props.markersize
             sns.swarmplot(
                 x=x[s],
                 y=y[s],
@@ -210,9 +216,6 @@ class SwarmPoints(Points):
                 legend=False,
                 ax=ax,
                 **self.kw,
-                marker=props.marker,
-                color=props.markeredgecolor,
-                size=props.markersize,
                 native_scale=True,
             )
 
@@ -231,6 +234,12 @@ class SwarmPoints(Points):
                 x_, y_ = y_, x_
             else:
                 orient = "v"
+            if 'marker' not in self.kw:
+                self.kw['marker'] = props.marker
+            if 'color' not in self.kw:
+                self.kw['color'] = props.markeredgecolor
+            if 'size' not in self.kw:
+                self.kw['size'] = props.marker
             sns.swarmplot(
                 x=x_,
                 y=y_,
@@ -238,9 +247,6 @@ class SwarmPoints(Points):
                 legend=False,
                 ax=ax,
                 **self.kw,
-                marker=props.marker,
-                color=props.markeredgecolor,
-                size=props.markersize,
                 native_scale=True,
             )
 

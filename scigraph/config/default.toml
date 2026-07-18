@@ -28,18 +28,18 @@
 
   [graphs.column]
   
-  linewidth = 1
+  linewidth = 0.5
   markersize = 3
-  capsize = 5
-  capthickness = 1
+  capsize = 2
+  capthickness = 0.5
   markeredgecolor = 'k'
   markerfacecolor = 'none'
   ls = '-'
   marker = 'o'
-  barcolor = ['#016899', 'skyblue', 'steelblue', 'powderblue']
+  barcolor = ['#016899', '#00c4d5', '#fd4332', '#ff8872']
   barwidth = 0.5
   baredgecolor = 'k'
-  baredgethickness = 1
+  baredgethickness = 0.5
 
   [graphs.grouped]
   
@@ -72,7 +72,7 @@
     distance_below = 0.05
     distance_above = 0.01
     color = 'k'
-    linewidth = 1
+    linewidth = 0.5
 
     [analyses.ttest1samp.draw]
     space_above = 0.05

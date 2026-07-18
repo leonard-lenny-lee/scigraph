@@ -46,6 +46,9 @@ class ErrorBars(GraphComponent, ABC):
 
         for i, id in enumerate(graph.table.dataset_ids):
             (props := graph.plot_properties[id].errorbar_kw()).update(**self.kw)
+            for k in self.kw:
+                if k in props:
+                    del props[k] 
             ax.errorbar(x[i], yori[i], xerr=xerr[i], yerr=yerr[i], **self.kw, **props)
 
     @override
