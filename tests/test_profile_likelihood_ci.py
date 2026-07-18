@@ -1,7 +1,20 @@
 import numpy as np
 
-from scigraph.analyses.curvefit import Linear
+from scigraph.analyses.curvefit import CurveFit, Linear
 from scigraph.datatables import XYTable
+
+
+class NonFiniteProfileModel(CurveFit):
+    """Test model whose hypothetical lower profile values are invalid."""
+
+    @staticmethod
+    def _f(x, scale):
+        if scale < 0.5:
+            return np.full_like(x, np.nan, dtype=float)
+        return scale * x
+
+    def _profile_initial_step(self, best, *_):
+        return best
 
 
 def test_profile_likelihood_matches_linear_model_ci():
@@ -72,3 +85,15 @@ def test_profile_likelihood_handles_shared_global_parameter():
     np.testing.assert_allclose(lower["A"], lower["Global (Shared)"])
     np.testing.assert_allclose(upper["A"], upper["B"])
     np.testing.assert_allclose(upper["A"], upper["Global (Shared)"])
+
+
+def test_profile_likelihood_returns_nan_when_a_restricted_fit_is_nonfinite():
+    x = np.linspace(1, 6, 8)
+    y = x + np.array([0.2, -0.1, 0.1, -0.2, 0.2, -0.1, 0.1, -0.2])
+    table = XYTable(np.column_stack((x, y)), 1, 1, 1, ["data"])
+    fit = NonFiniteProfileModel(table)
+    fit.fit()
+
+    confidence_intervals = fit.profile_likelihood_CI()
+
+    assert np.isnan(confidence_intervals.loc[("Lower CI 95%", "scale"), "data"])

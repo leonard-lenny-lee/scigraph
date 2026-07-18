@@ -1009,12 +1009,14 @@ class CurveFit(GraphableAnalysis, ABC):
             if p <= alpha:
                 try:
                     solution = root_scalar(
-                        lambda value: p_value(value) - alpha,
+                        lambda value: self._profile_root_objective(
+                            p_value(value), alpha
+                        ),
                         bracket=tuple(sorted((inside, candidate))),
                         method="brentq",
                         xtol=max(abs(best) * 1e-10, 1e-12),
                     )
-                except (ValueError, RuntimeError):
+                except (ValueError, RuntimeError, FloatingPointError, OverflowError):
                     LOG.warning(
                         "Profile likelihood CI could not be refined for %s.", label
                     )
@@ -1040,6 +1042,13 @@ class CurveFit(GraphableAnalysis, ABC):
             max_steps,
         )
         return np.nan
+
+    @staticmethod
+    def _profile_root_objective(p_value: float, alpha: float) -> float:
+        """Return a finite root objective or stop refinement at a failed fit."""
+        if not np.isfinite(p_value):
+            raise ValueError("A restricted profile fit did not converge.")
+        return p_value - alpha
 
     def _profile_p_value(
         self,
@@ -1069,7 +1078,11 @@ class CurveFit(GraphableAnalysis, ABC):
         model._is_bound[fitted_indices] = True
         model._bounds = model._lower_bounds, model._upper_bounds
 
-        restricted = model._gfit(xy) if model._global_fit else model._fit(xy)
+        try:
+            restricted = model._gfit(xy) if model._global_fit else model._fit(xy)
+        except (ValueError, RuntimeError, FloatingPointError, OverflowError) as error:
+            LOG.warning("Restricted profile fit failed. SciPy error: %s", error)
+            return np.nan
         key = (
             self._GLOBAL_NAME
             if self._global_fit
@@ -1146,7 +1159,7 @@ class CurveFit(GraphableAnalysis, ABC):
                     popt, pcov = curve_fit(
                         self._f, x, y, p0=p0, bounds=bounds, nan_policy="omit"
                     )
-            except RuntimeError as e:
+            except (RuntimeError, ValueError, FloatingPointError, OverflowError) as e:
                 LOG.warning(f"Curve fit failed for {id}. SciPy error: {e}")
                 res[id] = None
                 continue
